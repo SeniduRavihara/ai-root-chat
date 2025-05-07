@@ -1,10 +1,10 @@
-import ChatApp from "@/components/ChatApp";
-import ChatTester from "@/components/ChatTester";
+import ChatApp from "@/components/test/ChatApp2";
 
 export default function Home() {
   return (
     <div>
       {/* <ChatTester /> */}
+      {/* <ChatApp /> */}
       <ChatApp />
     </div>
   );
