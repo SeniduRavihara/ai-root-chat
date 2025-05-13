@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ConversationView from "./ConversationView";
+import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
+import ConversationView from "./ConversationView";
+import BranchTreeVisualization from "./processBranchesForTreeView";
 
-const mockBranchesData = {
+const mockBranchesData: Record<string, BranchWithMessages> = {
   main: {
     id: "main",
     name: "Main Branch",
@@ -166,12 +168,12 @@ const mockBranchesData = {
 };
 
 export default function BranchingChatTree2() {
-  const [activeBranch, setActiveBranch] = useState("crypto-focus");
-  const [hoveredBranch, setHoveredBranch] = useState(null);
-  const [windowHeight, setWindowHeight] = useState(0);
-  const [expandedTreeView, setExpandedTreeView] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeBranch, setActiveBranch] = useState<string>("crypto-focus");
+  const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
+  const [windowHeight, setWindowHeight] = useState<number>(0);
+  const [expandedTreeView, setExpandedTreeView] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -189,12 +191,12 @@ export default function BranchingChatTree2() {
     : Math.min(300, windowHeight * 0.3);
 
   // Get the full message history for a branch (including all ancestor messages)
-  const getBranchMessages = (branchId) => {
+  const getBranchMessages = (branchId: string): Message[] => {
     // Track the complete branch path from root to current branch
     const branchPath = getBranchPath(branchId);
 
     // Start with an empty message list
-    let messages = [];
+    let messages: Message[] = [];
 
     // Process branches in order from root to leaf
     for (let i = 0; i < branchPath.length; i++) {
@@ -224,13 +226,16 @@ export default function BranchingChatTree2() {
   };
 
   // Helper function to get the branch path from root to current branch
-  const getBranchPath = (branchId) => {
-    const branchPath = [];
-    let currentBranchId = branchId;
+  const getBranchPath = (
+    branchId: string
+  ): { branchId: string; parentMessageId: string | null }[] => {
+    const branchPath: { branchId: string; parentMessageId: string | null }[] =
+      [];
+    let currentBranchId: string | null = branchId;
 
     // Walk up the branch hierarchy
     while (currentBranchId) {
-      const branch = mockBranchesData[currentBranchId];
+      const branch: BranchWithMessages = mockBranchesData[currentBranchId];
       branchPath.unshift({
         branchId: currentBranchId,
         parentMessageId: branch.parentMessageId,
@@ -242,7 +247,9 @@ export default function BranchingChatTree2() {
   };
 
   // Filter branches based on search query
-  const filteredBranches = Object.values(mockBranchesData).filter((branch) =>
+  const filteredBranches: BranchWithMessages[] = Object.values(
+    mockBranchesData
+  ).filter((branch) =>
     branch.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -273,7 +280,7 @@ export default function BranchingChatTree2() {
       </div> */}
 
       {/* Branch Tree Visualization Component */}
-      {/* <BranchTreeVisualization
+      <BranchTreeVisualization
         activeBranch={activeBranch}
         setActiveBranch={setActiveBranch}
         hoveredBranch={hoveredBranch}
@@ -282,7 +289,7 @@ export default function BranchingChatTree2() {
         setExpandedTreeView={setExpandedTreeView}
         treeViewHeight={treeViewHeight}
         mockBranchesData={mockBranchesData}
-      /> */}
+      />
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">

@@ -1,13 +1,32 @@
 import {
+  ChevronDown,
+  ChevronRight,
   GitBranch,
   MessageSquare,
   Plus,
   Search,
   X,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { Branch } from "../../types";
+
+interface BranchExplorerProps {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  activeBranch: string;
+  setActiveBranch: (branchId: string) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filteredBranches: BranchWithMessages[];
+  mockBranchesData: Record<string, BranchWithMessages>;
+  treeViewHeight: number;
+}
+
+interface BranchWithMessages extends Branch {
+  color: string;
+  messages: { id: string; role: string; content: string; timestamp: string }[];
+  children?: BranchWithMessages[];
+}
 
 export default function BranchExplorer({
   sidebarOpen,
@@ -19,12 +38,14 @@ export default function BranchExplorer({
   filteredBranches,
   mockBranchesData,
   treeViewHeight,
-}) {
+}: BranchExplorerProps) {
   // State to track which branches are expanded in the tree view
-  const [expandedBranches, setExpandedBranches] = useState({});
+  const [expandedBranches, setExpandedBranches] = useState<
+    Record<string, boolean>
+  >({});
 
   // Function to toggle branch expansion
-  const toggleBranchExpansion = (branchId) => {
+  const toggleBranchExpansion = (branchId: string) => {
     setExpandedBranches((prev) => ({
       ...prev,
       [branchId]: !prev[branchId],
@@ -33,8 +54,8 @@ export default function BranchExplorer({
 
   // Function to organize branches into a tree structure
   const buildBranchTree = () => {
-    const tree = {};
-    const branchesWithChildren = {};
+    const tree: Record<string, BranchWithMessages> = {};
+    const branchesWithChildren: Record<string, BranchWithMessages> = {};
 
     // Initialize all branches with empty children array
     filteredBranches.forEach((branch) => {
@@ -47,7 +68,7 @@ export default function BranchExplorer({
     // Populate children arrays
     filteredBranches.forEach((branch) => {
       if (branch.parentId && branchesWithChildren[branch.parentId]) {
-        branchesWithChildren[branch.parentId].children.push(
+        branchesWithChildren[branch.parentId].children!.push(
           branchesWithChildren[branch.id]
         );
       }
@@ -66,7 +87,7 @@ export default function BranchExplorer({
   const { tree: branchTree } = buildBranchTree();
 
   // Recursive function to render branch nodes with their children
-  const renderBranchNode = (branch) => {
+  const renderBranchNode = (branch: BranchWithMessages) => {
     if (!branch) return null;
     const isActive = branch.id === activeBranch;
     const isExpanded = expandedBranches[branch.id];

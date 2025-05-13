@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   if (historyParam) {
     try {
       history = JSON.parse(historyParam); // Parse previous messages
-    } catch (e) {
+    } catch {
       return new Response(JSON.stringify({ error: "Invalid history format" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },

@@ -1,18 +1,11 @@
+import { BranchWithMessages } from "@/types";
 import { GitBranch, GitFork, MoreHorizontal } from "lucide-react";
 import React from "react";
 
-type Branch = {
-  name: string;
-  color: string;
-  parentId?: string;
-};
 
-type BranchesData = {
-  [branchId: string]: Branch;
-};
 
 type HeaderProps = {
-  mockBranchesData: BranchesData;
+  mockBranchesData: Record<string, BranchWithMessages>;
   activeBranch: string;
 };
 

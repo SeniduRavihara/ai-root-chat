@@ -1,16 +1,13 @@
+import { BranchWithMessages } from "@/types";
 import { GitBranch, Plus, Send } from "lucide-react";
 
-type Branch = {
-  name: string;
-  color: string;
-};
 
 type ChatInputProps = {
   message: string;
   setMessage: (msg: string) => void;
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  mockBranchesData: Branch[];
-  activeBranch: number;
+  mockBranchesData: Record<string, BranchWithMessages>;
+  activeBranch: string;
 };
 
 const ChatInput: React.FC<ChatInputProps> = ({

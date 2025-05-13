@@ -1,14 +1,56 @@
 import { GitBranch, GitFork, Maximize2, Minimize2 } from "lucide-react";
 import { useMemo } from "react";
+import { Branch } from "../../types";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface BranchWithMessages extends Branch {
+  color: string;
+  messages: Message[];
+}
+
+export interface BranchNode {
+  id: string;
+  name: string;
+  color: string;
+  messageCount: number;
+  children: BranchNode[];
+  depth: number;
+  parentId: string | null;
+  parentMessageId?: string | null;
+  horizontalPosition: number;
+}
+
+export interface Connection {
+  id: string;
+  source: { id: string; x: number; y: number };
+  target: { id: string; x: number; y: number };
+  color: string;
+}
+
+interface BranchTreeVisualizationProps {
+  activeBranch: string;
+  setActiveBranch: (branchId: string) => void;
+  hoveredBranch: string | null;
+  setHoveredBranch: (branchId: string | null) => void;
+  expandedTreeView: boolean;
+  setExpandedTreeView: (expanded: boolean) => void;
+  treeViewHeight: number;
+  mockBranchesData: Record<string, BranchWithMessages>;
+}
 
 // Process data to create a hierarchical tree structure with node positions
-const processBranchesForTreeView = (mockBranchesData) => {
+const processBranchesForTreeView = (
+  mockBranchesData: Record<string, BranchWithMessages>
+) => {
   // Create a hierarchical structure
-  const tree = { id: "root", children: [] };
   const mainBranch = mockBranchesData["main"];
-
-  // Add main branch as first child
-  const mainNode = {
+  const tree: BranchNode = {
     id: mainBranch.id,
     name: mainBranch.name,
     color: mainBranch.color,
@@ -18,13 +60,12 @@ const processBranchesForTreeView = (mockBranchesData) => {
     parentId: null,
     horizontalPosition: 0,
   };
-  tree.children.push(mainNode);
 
   // Helper to find a node in the tree
-  const findNode = (id, node) => {
+  const findNode = (id: string | null, node: BranchNode): BranchNode | null => {
+    if (!id) return null;
     if (node.id === id) return node;
     if (!node.children) return null;
-
     for (const child of node.children) {
       const found = findNode(id, child);
       if (found) return found;
@@ -38,7 +79,7 @@ const processBranchesForTreeView = (mockBranchesData) => {
 
     const parentNode = findNode(branch.parentId, tree);
     if (parentNode) {
-      const node = {
+      const node: BranchNode = {
         id: branch.id,
         name: branch.name,
         color: branch.color,
@@ -47,6 +88,7 @@ const processBranchesForTreeView = (mockBranchesData) => {
         depth: parentNode.depth + 1,
         parentId: branch.parentId,
         parentMessageId: branch.parentMessageId,
+        horizontalPosition: 0,
       };
       parentNode.children.push(node);
     }
@@ -54,14 +96,14 @@ const processBranchesForTreeView = (mockBranchesData) => {
 
   // Assign horizontal positions to create a nicer tree layout
   let maxDepth = 0;
-  const assignPositions = (node, horizontalPos = 0) => {
+  const assignPositions = (node: BranchNode, horizontalPos = 0) => {
     node.horizontalPosition = horizontalPos;
     if (node.depth > maxDepth) maxDepth = node.depth;
 
     if (!node.children || node.children.length === 0) return;
 
     // Sort children to get a more balanced tree
-    node.children.sort((a, b) => {
+    node.children.sort((a: BranchNode, b: BranchNode) => {
       // Sort by number of messages (more messages = more weight)
       return b.messageCount - a.messageCount;
     });
@@ -74,11 +116,11 @@ const processBranchesForTreeView = (mockBranchesData) => {
     }
   };
 
-  assignPositions(mainNode);
+  assignPositions(tree);
 
   // Flatten tree for easier rendering
-  const flattenedTree = [];
-  const flattenTree = (node, parent = null) => {
+  const flattenedTree: BranchNode[] = [];
+  const flattenTree = (node: BranchNode) => {
     flattenedTree.push({
       id: node.id,
       name: node.name,
@@ -88,23 +130,26 @@ const processBranchesForTreeView = (mockBranchesData) => {
       horizontalPosition: node.horizontalPosition,
       parentId: node.parentId,
       parentMessageId: node.parentMessageId,
+      children: node.children,
     });
 
     if (node.children) {
-      node.children.forEach((child) => flattenTree(child, node));
+      node.children.forEach((child: BranchNode) => flattenTree(child));
     }
   };
 
-  flattenTree(mainNode);
+  flattenTree(tree);
 
   return { flattenedTree, maxDepth };
 };
 
 // Calculate branch connections for the visual tree
-const calculateBranchConnections = (flattenedTree) => {
-  const connections = [];
+const calculateBranchConnections = (
+  flattenedTree: BranchNode[]
+): Connection[] => {
+  const connections: Connection[] = [];
 
-  flattenedTree.forEach((branch) => {
+  flattenedTree.forEach((branch: BranchNode) => {
     if (branch.parentId) {
       const parent = flattenedTree.find((b) => b.id === branch.parentId);
       if (parent) {
@@ -138,7 +183,7 @@ export default function BranchTreeVisualization({
   setExpandedTreeView,
   treeViewHeight,
   mockBranchesData,
-}) {
+}: BranchTreeVisualizationProps) {
   // Process branch data for visualization using memoization
   const { flattenedTree, maxDepth } = useMemo(
     () => processBranchesForTreeView(mockBranchesData),

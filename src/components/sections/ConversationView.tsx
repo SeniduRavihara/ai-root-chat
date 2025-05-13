@@ -2,21 +2,28 @@
 
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { BranchWithMessages, Message } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
+
+interface ConversationViewProps {
+  activeBranch: string;
+  getBranchMessages: (branchId: string) => Message[];
+  mockBranchesData: Record<string, BranchWithMessages>;
+}
 
 export default function ConversationView({
   activeBranch,
   getBranchMessages,
   mockBranchesData,
-}) {
-  const [message, setMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+}: ConversationViewProps) {
+  const [message, setMessage] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Format timestamp to readable string
-  const formatTime = (timestamp) => {
+  const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -24,7 +31,7 @@ export default function ConversationView({
   };
 
   // Determine which branch a message belongs to directly (not via inheritance)
-  const getMessageBranchId = (messageId) => {
+  const getMessageBranchId = (messageId: string): string | null => {
     for (const branchId in mockBranchesData) {
       const branch = mockBranchesData[branchId];
       if (branch.messages.some((msg) => msg.id === messageId)) {
@@ -35,14 +42,14 @@ export default function ConversationView({
   };
 
   // Check if a message is from the currently active branch (directly, not inherited)
-  const isMessageFromActiveBranch = (messageId) => {
+  const isMessageFromActiveBranch = (messageId: string): boolean => {
     return mockBranchesData[activeBranch].messages.some(
       (msg) => msg.id === messageId
     );
   };
 
   // Find the branch that a message belongs to
-  const getMessageBranch = (messageId) => {
+  const getMessageBranch = (messageId: string): BranchWithMessages | null => {
     const branchId = getMessageBranchId(messageId);
     return branchId ? mockBranchesData[branchId] : null;
   };
@@ -50,9 +57,10 @@ export default function ConversationView({
   // Auto scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getBranchMessages(activeBranch)]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!message.trim()) return;
 
@@ -63,10 +71,10 @@ export default function ConversationView({
     setTimeout(() => setIsTyping(false), 2000);
   };
 
-  const handleCreateBranch = (messageId) => {
-    // This would trigger branch creation from this message
-    console.log(`Creating branch from message: ${messageId}`);
-  };
+  // const handleCreateBranch = (messageId: string) => {
+  //   // This would trigger branch creation from this message
+  //   console.log(`Creating branch from message: ${messageId}`);
+  // };
 
   const allMessages = getBranchMessages(activeBranch);
 
