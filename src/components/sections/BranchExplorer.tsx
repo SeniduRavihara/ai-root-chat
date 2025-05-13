@@ -1,4 +1,13 @@
-import { GitBranch, MessageSquare, Plus, Search, X } from "lucide-react";
+import {
+  GitBranch,
+  MessageSquare,
+  Plus,
+  Search,
+  X,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
+import { useState } from "react";
 
 export default function BranchExplorer({
   sidebarOpen,
@@ -11,6 +20,128 @@ export default function BranchExplorer({
   mockBranchesData,
   treeViewHeight,
 }) {
+  // State to track which branches are expanded in the tree view
+  const [expandedBranches, setExpandedBranches] = useState({});
+
+  // Function to toggle branch expansion
+  const toggleBranchExpansion = (branchId) => {
+    setExpandedBranches((prev) => ({
+      ...prev,
+      [branchId]: !prev[branchId],
+    }));
+  };
+
+  // Function to organize branches into a tree structure
+  const buildBranchTree = () => {
+    const tree = {};
+    const branchesWithChildren = {};
+
+    // Initialize all branches with empty children array
+    filteredBranches.forEach((branch) => {
+      branchesWithChildren[branch.id] = {
+        ...branch,
+        children: [],
+      };
+    });
+
+    // Populate children arrays
+    filteredBranches.forEach((branch) => {
+      if (branch.parentId && branchesWithChildren[branch.parentId]) {
+        branchesWithChildren[branch.parentId].children.push(
+          branchesWithChildren[branch.id]
+        );
+      }
+    });
+
+    // Get root level branches (those without parents or with non-existent parents)
+    filteredBranches.forEach((branch) => {
+      if (!branch.parentId || !branchesWithChildren[branch.parentId]) {
+        tree[branch.id] = branchesWithChildren[branch.id];
+      }
+    });
+
+    return { tree, branchesWithChildren };
+  };
+
+  const { tree: branchTree } = buildBranchTree();
+
+  // Recursive function to render branch nodes with their children
+  const renderBranchNode = (branch) => {
+    if (!branch) return null;
+    const isActive = branch.id === activeBranch;
+    const isExpanded = expandedBranches[branch.id];
+
+    return (
+      <div key={branch.id} className="mt-1">
+        <div
+          className={`flex items-center p-2 rounded-lg cursor-pointer ${
+            isActive
+              ? "bg-blue-50 dark:bg-blue-900/20"
+              : "hover:bg-gray-50 dark:hover:bg-gray-800"
+          }`}
+        >
+          {branch.children && branch.children.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleBranchExpansion(branch.id);
+              }}
+              className="mr-1 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              {isExpanded ? (
+                <ChevronDown size={16} />
+              ) : (
+                <ChevronRight size={16} />
+              )}
+            </button>
+          )}
+          <div
+            className={`flex items-center flex-grow py-2 px-3 rounded-xl cursor-pointer transition-all ${
+              isActive
+                ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
+            }`}
+            onClick={() => setActiveBranch(branch.id)}
+          >
+            <div
+              className="w-1.5 h-12 rounded-full mr-3"
+              style={{ backgroundColor: branch.color }}
+            ></div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">{branch.name}</h4>
+                <div
+                  className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium"
+                  style={{
+                    backgroundColor: `${branch.color}20`,
+                    color: branch.color,
+                  }}
+                >
+                  {branch.messages.length}
+                </div>
+              </div>
+              <div className="flex items-center mt-1 text-xs text-gray-500">
+                <MessageSquare size={12} className="mr-1" />
+                <span>{branch.messages.length} messages</span>
+                {branch.parentId && (
+                  <span className="ml-3 flex items-center">
+                    <GitBranch size={12} className="mr-1" />
+                    from {mockBranchesData[branch.parentId]?.name || "Parent"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        {isExpanded && branch.children && branch.children.length > 0 && (
+          <div className="border-l-2 border-dashed border-gray-300 dark:border-gray-700 pl-4 ml-4">
+            {branch.children.map((child) => renderBranchNode(child))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className={`${
@@ -41,55 +172,9 @@ export default function BranchExplorer({
         </div>
       </div>
 
-      {/* Branches List */}
+      {/* Branches List with Tree Structure */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {filteredBranches.map((branch) => {
-          const isActive = branch.id === activeBranch;
-          const parentName = branch.parentId
-            ? mockBranchesData[branch.parentId].name
-            : null;
-
-          return (
-            <div
-              key={branch.id}
-              className={`flex items-center p-3 rounded-xl cursor-pointer transition-all ${
-                isActive
-                  ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
-              }`}
-              onClick={() => setActiveBranch(branch.id)}
-            >
-              <div
-                className="w-1.5 h-12 rounded-full mr-3"
-                style={{ backgroundColor: branch.color }}
-              ></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">{branch.name}</h4>
-                  <div
-                    className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: `${branch.color}20`,
-                      color: branch.color,
-                    }}
-                  >
-                    {branch.messages.length}
-                  </div>
-                </div>
-                <div className="flex items-center mt-1 text-xs text-gray-500">
-                  <MessageSquare size={12} className="mr-1" />
-                  <span>{branch.messages.length} messages</span>
-                  {branch.parentId && (
-                    <span className="ml-3 flex items-center">
-                      <GitBranch size={12} className="mr-1" />
-                      from {parentName}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {Object.values(branchTree).map((branch) => renderBranchNode(branch))}
       </div>
 
       {/* Actions Footer */}
