@@ -1,12 +1,8 @@
 "use client";
 
-import { Clock, GitBranch, Menu, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-
-// import { mockBranchesData } from "./data"; // We'll move data to a separate file
-import BranchTreeVisualization from "./processBranchesForTreeView";
-import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
+import BranchExplorer from "./BranchExplorer";
 
 const mockBranchesData = {
   main: {
@@ -169,7 +165,6 @@ const mockBranchesData = {
   },
 };
 
-
 export default function BranchingChatTree2() {
   const [activeBranch, setActiveBranch] = useState("crypto-focus");
   const [hoveredBranch, setHoveredBranch] = useState(null);
@@ -193,22 +188,57 @@ export default function BranchingChatTree2() {
     ? Math.max(400, windowHeight * 0.5)
     : Math.min(300, windowHeight * 0.3);
 
-  // Get the full message history for a branch (including parent messages)
+  // Get the full message history for a branch (including all ancestor messages)
   const getBranchMessages = (branchId) => {
-    const branch = mockBranchesData[branchId];
+    // Track the complete branch path from root to current branch
+    const branchPath = getBranchPath(branchId);
 
-    if (!branch.parentId) {
-      return branch.messages;
+    // Start with an empty message list
+    let messages = [];
+
+    // Process branches in order from root to leaf
+    for (let i = 0; i < branchPath.length; i++) {
+      const { branchId, parentMessageId } = branchPath[i];
+      const branch = mockBranchesData[branchId];
+
+      if (i === 0) {
+        // For the root branch, take all messages
+        messages = [...branch.messages];
+      } else {
+        // For child branches, find the fork point in our current messages
+        const forkIndex = messages.findIndex(
+          (msg) => msg.id === parentMessageId
+        );
+
+        if (forkIndex >= 0) {
+          // Keep messages up to and including the fork point
+          messages = [...messages.slice(0, forkIndex + 1), ...branch.messages];
+        } else {
+          // If fork point not found (shouldn't happen), just append
+          messages = [...messages, ...branch.messages];
+        }
+      }
     }
 
-    const parentBranch = mockBranchesData[branch.parentId];
-    const forkMessageIndex = parentBranch.messages.findIndex(
-      (msg) => msg.id === branch.parentMessageId
-    );
+    return messages;
+  };
 
-    const parentMessages = parentBranch.messages.slice(0, forkMessageIndex + 1);
+  // Helper function to get the branch path from root to current branch
+  const getBranchPath = (branchId) => {
+    const branchPath = [];
+    let currentBranchId = branchId;
 
-    return [...parentMessages, ...branch.messages];
+    // Walk up the branch hierarchy
+    while (currentBranchId) {
+      const branch = mockBranchesData[currentBranchId];
+      branchPath.unshift({
+        branchId: currentBranchId,
+        parentMessageId: branch.parentMessageId,
+      });
+      currentBranchId = branch.parentId;
+    }
+
+    return branchPath;
   };
 
   // Filter branches based on search query
@@ -257,7 +287,7 @@ export default function BranchingChatTree2() {
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar - Branch Explorer Component */}
-        {/* <BranchExplorer
+        <BranchExplorer
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           activeBranch={activeBranch}
@@ -267,7 +297,7 @@ export default function BranchingChatTree2() {
           filteredBranches={filteredBranches}
           mockBranchesData={mockBranchesData}
           treeViewHeight={treeViewHeight}
-        /> */}
+        />
 
         {/* Main content - Conversation View Component */}
         <ConversationView
