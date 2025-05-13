@@ -12,8 +12,8 @@ export default function Home() {
       {/* <ChatApp /> */}
       {/* <ChatApp /> */}
       {/* <BranchingChatTree /> */}
-      {/* <BranchingChatTree /> */}
-      <BranchingChatTree2 />
+      <BranchingChatTree />
+      {/* <BranchingChatTree2 /> */}
     </div>
   );
 }
