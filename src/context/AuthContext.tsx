@@ -4,7 +4,7 @@ import { INITIAL_AUTH_CONTEXT } from "@/constants";
 import { featchCurrentUserData, fetchUserBranchData } from "@/firebase/api";
 import { auth } from "@/firebase/firebase_config";
 import { useData } from "@/hooks/useData";
-import { AuthContextType } from "@/types";
+import { AuthContextType, UserDataType } from "@/types";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, useEffect, useState } from "react";
 
@@ -24,8 +24,8 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const userData = await featchCurrentUserData(user);
-      const userBranchData = await fetchUserBranchData(user.uid);
+      const userData = await featchCurrentUserData(user) as UserDataType;
+      const userBranchData = await fetchUserBranchData(user.uid) ;
 
       // console.log("SENU", userData, userBranchData);
 
