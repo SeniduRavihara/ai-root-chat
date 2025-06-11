@@ -14,7 +14,7 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await login({ email, password });
-    // Handle login logic here
+    router.push("/");
   };
 
   const handleGoogleSignIn = async () => {

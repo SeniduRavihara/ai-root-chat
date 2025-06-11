@@ -58,10 +58,7 @@ export const signup = async ({
     const payload = {
       uid: "",
       userName: "",
-      regNo: null,
       email: "",
-      roles: "STUDENT",
-      registered: false,
     };
 
     await setDoc(doc(db, "users", user.uid), {

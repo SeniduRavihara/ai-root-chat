@@ -1,6 +1,6 @@
 "use client";
 
-import { googleSignIn } from "@/firebase/api";
+import { googleSignIn, signup } from "@/firebase/api";
 import { Bot, Github, Mail, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ const SignupPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await signup({ email, password, name });
     router.push("/");
   };
 

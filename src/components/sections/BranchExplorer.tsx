@@ -1,4 +1,5 @@
 import { logout } from "@/firebase/api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronDown,
   ChevronRight,
@@ -43,6 +44,7 @@ export default function BranchExplorer({
   mockBranchesData,
   treeViewHeight,
 }: BranchExplorerProps) {
+  const { currentUser } = useAuth();
   // State to track which branches are expanded in the tree view
   const [expandedBranches, setExpandedBranches] = useState<
     Record<string, boolean>
@@ -250,10 +252,10 @@ export default function BranchExplorer({
                 </div>
                 <div className="ml-3">
                   <p className="font-medium text-gray-900 dark:text-white">
-                    User Name
+                    {currentUser?.displayName || "User"}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    user@example.com
+                    {currentUser?.email}
                   </p>
                 </div>
               </div>
