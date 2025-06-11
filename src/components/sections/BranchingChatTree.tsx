@@ -8,7 +8,7 @@ import ConversationView from "./ConversationView";
 import BranchTreeVisualization from "./processBranchesForTreeView";
 // import { mockBranchesData } from "./data";
 
-export default function BranchingChatTree2() {
+export default function BranchingChatTree() {
   const { currentUserData } = useData();
   const branchesData = currentUserData?.branches || {};
   const [activeBranch, setActiveBranch] = useState<string>("main");

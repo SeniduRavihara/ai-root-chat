@@ -1,9 +1,9 @@
-import BranchingChatTree2 from "@/components/sections/BranchingChatTree";
+import BranchingChatTree from "@/components/sections/BranchingChatTree";
 
 export default function Home() {
   return (
     <div>
-      <BranchingChatTree2 />
+      <BranchingChatTree />
     </div>
   );
 }

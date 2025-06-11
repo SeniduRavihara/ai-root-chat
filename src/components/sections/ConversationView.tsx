@@ -1,5 +1,6 @@
 "use client";
 
+import { useData } from "@/hooks/useData";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
@@ -18,9 +19,12 @@ export default function ConversationView({
   getBranchMessages,
   mockBranchesData,
 }: ConversationViewProps) {
+  const { setCurrentUserData } = useData();
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const allMessages = getBranchMessages(activeBranch);
 
   // Format timestamp to readable string
   const formatTime = (timestamp: string) => {
@@ -57,26 +61,86 @@ export default function ConversationView({
   // Auto scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getBranchMessages(activeBranch)]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // This would normally send to an API, but for now we'll just clear the input
+    // Optionally, add the user's message to the branch immediately
+    setCurrentUserData((prev) => {
+      if (!prev) return prev;
+      const updatedBranches = {
+        ...prev.branches,
+        [activeBranch]: {
+          ...prev.branches[activeBranch],
+          messages: [
+            ...prev.branches[activeBranch].messages,
+            {
+              id: `user-${Date.now()}`,
+              role: "user",
+              content: message,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        },
+      };
+      return { ...prev, branches: updatedBranches };
+    });
+
     setMessage("");
-    // Simulate typing response
     setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
+
+    // Send to API and get the assistant's reply
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+      "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+      question: message,
+      // Gemini expects history as an array of {role, parts: [{text}]}
+      history: allMessages.map((msg) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      })),
+      }),
+    });
+
+    const data = await response.json();
+    const assistantMessage = data.answer; // adjust if your API returns differently
+
+    console.log("Assistant's reply:", assistantMessage);
+
+    // Add the assistant's reply to the branch
+    setCurrentUserData((prev) => {
+      if (!prev) return prev;
+      const updatedBranches = {
+        ...prev.branches,
+        [activeBranch]: {
+          ...prev.branches[activeBranch],
+          messages: [
+            ...prev.branches[activeBranch].messages,
+            {
+              id: `user-${Date.now()}`,
+              role: "assistant",
+              content: assistantMessage,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        },
+      };
+      return { ...prev, branches: updatedBranches };
+    });
+
+    setIsTyping(false);
   };
 
   // const handleCreateBranch = (messageId: string) => {
   //   // This would trigger branch creation from this message
   //   console.log(`Creating branch from message: ${messageId}`);
   // };
-
-  const allMessages = getBranchMessages(activeBranch);
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
