@@ -2,14 +2,24 @@ import { BranchWithMessages } from "@/types";
 import { GitBranch, GitFork, MoreHorizontal } from "lucide-react";
 import React from "react";
 
-
-
 type HeaderProps = {
   mockBranchesData: Record<string, BranchWithMessages>;
   activeBranch: string;
 };
 
 const Header: React.FC<HeaderProps> = ({ mockBranchesData, activeBranch }) => {
+  const branch = mockBranchesData[activeBranch];
+  if (!branch) {
+    // Optionally, render a fallback UI or nothing
+    return (
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div className="text-gray-500">Branch not found</div>
+      </div>
+    );
+  }
+  const parentBranch = branch.parentId
+    ? mockBranchesData[branch.parentId]
+    : undefined;
   return (
     <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       <div className="flex items-center justify-between">
@@ -17,33 +27,23 @@ const Header: React.FC<HeaderProps> = ({ mockBranchesData, activeBranch }) => {
           <div
             className="w-8 h-8 rounded-full mr-3 flex items-center justify-center"
             style={{
-              backgroundColor: `${mockBranchesData[activeBranch].color}20`,
+              backgroundColor: `${branch.color}20`,
             }}
           >
-            <GitBranch
-              size={16}
-              style={{ color: mockBranchesData[activeBranch].color }}
-            />
+            <GitBranch size={16} style={{ color: branch.color }} />
           </div>
           <div>
-            <h2 className="text-lg font-bold">
-              {mockBranchesData[activeBranch].name}
-            </h2>
-            {mockBranchesData[activeBranch].parentId && (
+            <h2 className="text-lg font-bold">{branch.name}</h2>
+            {branch.parentId && parentBranch && (
               <div className="text-sm text-gray-500 flex items-center">
                 <span>Forked from</span>
                 <span
                   className="ml-1 font-medium"
                   style={{
-                    color:
-                      mockBranchesData[mockBranchesData[activeBranch].parentId!]
-                        .color,
+                    color: parentBranch.color,
                   }}
                 >
-                  {
-                    mockBranchesData[mockBranchesData[activeBranch].parentId!]
-                      .name
-                  }
+                  {parentBranch.name}
                 </span>
               </div>
             )}

@@ -3,13 +3,14 @@
 import { useData } from "@/hooks/useData";
 import { useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
-import BranchTreeVisualization from "./processBranchesForTreeView";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
+import BranchTreeVisualization from "./processBranchesForTreeView";
 // import { mockBranchesData } from "./data";
 
 export default function BranchingChatTree2() {
-  const { branchesData } = useData();
+  const { currentUserData } = useData();
+  const branchesData = currentUserData?.branches || {};
   const [activeBranch, setActiveBranch] = useState<string>("crypto-focus");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
@@ -141,7 +142,16 @@ export default function BranchingChatTree2() {
     let currentBranchId: string | null = branchId;
 
     while (currentBranchId) {
-      const branch: BranchWithMessages = branchesData[currentBranchId];
+      const branch: BranchWithMessages | undefined =
+        branchesData[currentBranchId];
+      // If branch doesn't exist, break the loop
+      if (!branch) {
+        console.warn(
+          `Branch with id ${currentBranchId} not found in branchesData`
+        );
+        break;
+      }
+
       branchPath.unshift({
         branchId: currentBranchId,
         parentMessageId: branch.parentMessageId,
@@ -155,7 +165,7 @@ export default function BranchingChatTree2() {
   // Filter branches based on search query
   const filteredBranches: BranchWithMessages[] = Object.values(
     branchesData
-  ).filter((branch) =>
+  ).filter((branch): branch is BranchWithMessages =>
     branch.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 

@@ -96,8 +96,8 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
   "crypto-focus": {
     id: "crypto-focus",
     name: "Crypto Deep Dive",
-    parentId: "high-risk",
-    parentMessageId: "msg8",
+    parentId: "reits-focus2",
+    parentMessageId: "msg15",
     color: "#f59e0b", // amber
     messages: [
       {
@@ -115,6 +115,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
       },
     ],
   },
+  
   "real-estate": {
     id: "real-estate",
     name: "Real Estate Option",
@@ -140,6 +141,28 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
   "reits-focus": {
     id: "reits-focus",
     name: "REITs Analysis",
+    parentId: "real-estate",
+    parentMessageId: "msg14",
+    color: "#14b8a6", // teal
+    messages: [
+      {
+        id: "msg15",
+        role: "user",
+        content: "Tell me more about REITs specifically.",
+        timestamp: "2025-05-08T10:14:00Z",
+      },
+      {
+        id: "msg16",
+        role: "assistant",
+        content:
+          "REITs are securities that invest in real estate and distribute 90% of taxable income to shareholders. Look for residential, commercial, healthcare, and data center REITs with strong dividend histories and manageable debt levels.",
+        timestamp: "2025-05-08T10:15:00Z",
+      },
+    ],
+  },
+  "reits-focus2": {
+    id: "reits-focus2",
+    name: "REITs Analysis2",
     parentId: "real-estate",
     parentMessageId: "msg14",
     color: "#14b8a6", // teal

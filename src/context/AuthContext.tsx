@@ -1,5 +1,6 @@
 "use client";
 
+import { mockBranchesData } from "@/components/sections/data";
 import { INITIAL_AUTH_CONTEXT } from "@/constants";
 import { featchCurrentUserData, fetchUserBranchData } from "@/firebase/api";
 import { auth } from "@/firebase/firebase_config";

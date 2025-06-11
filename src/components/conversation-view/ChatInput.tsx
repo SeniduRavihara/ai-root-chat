@@ -1,7 +1,6 @@
 import { BranchWithMessages } from "@/types";
 import { GitBranch, Plus, Send } from "lucide-react";
 
-
 type ChatInputProps = {
   message: string;
   setMessage: (msg: string) => void;
@@ -17,6 +16,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   mockBranchesData,
   activeBranch,
 }) => {
+  const branch = mockBranchesData[activeBranch];
+
   return (
     <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       <form
@@ -53,16 +54,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
       {/* Branch info pill */}
       <div className="flex justify-center mt-3">
-        <div
-          className="flex items-center px-3 py-1 rounded-full text-xs"
-          style={{
-            backgroundColor: `${mockBranchesData[activeBranch].color}15`,
-            color: mockBranchesData[activeBranch].color,
-          }}
-        >
-          <GitBranch size={12} className="mr-1" />
-          Currently in {mockBranchesData[activeBranch].name}
-        </div>
+        {branch && (
+          <div
+            className="flex items-center px-3 py-1 rounded-full text-xs"
+            style={{
+              backgroundColor: `${branch.color}15`,
+              color: branch.color,
+            }}
+          >
+            <GitBranch size={12} className="mr-1" />
+            Currently in {branch.name}
+          </div>
+        )}
       </div>
     </div>
   );

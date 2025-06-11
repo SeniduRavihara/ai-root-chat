@@ -48,53 +48,45 @@ interface BranchTreeVisualizationProps {
 const processBranchesForTreeView = (
   branchesData: Record<string, BranchWithMessages>
 ) => {
-  // Create a hierarchical structure
-  const mainBranch = branchesData["main"];
-  const tree: BranchNode = {
-    id: mainBranch.id,
-    name: mainBranch.name,
-    color: mainBranch.color,
-    messageCount: mainBranch.messages.length,
-    children: [],
-    depth: 0,
-    parentId: null,
-    horizontalPosition: 0,
-  };
+  // Create a map to store all nodes for easier lookup
+  const nodeMap = new Map<string, BranchNode>();
 
-  // Helper to find a node in the tree
-  const findNode = (id: string | null, node: BranchNode): BranchNode | null => {
-    if (!id) return null;
-    if (node.id === id) return node;
-    if (!node.children) return null;
-    for (const child of node.children) {
-      const found = findNode(id, child);
-      if (found) return found;
-    }
-    return null;
-  };
-
-  // Add all branches as nodes
+  // First pass: Create all nodes
   Object.values(branchesData).forEach((branch) => {
-    if (branch.id === "main") return; // Skip main branch as we already added it
-
-    const parentNode = findNode(branch.parentId, tree);
-    if (parentNode) {
-      const node: BranchNode = {
-        id: branch.id,
-        name: branch.name,
-        color: branch.color,
-        messageCount: branch.messages.length,
-        children: [],
-        depth: parentNode.depth + 1,
-        parentId: branch.parentId,
-        parentMessageId: branch.parentMessageId,
-        horizontalPosition: 0,
-      };
-      parentNode.children.push(node);
-    }
+    nodeMap.set(branch.id, {
+      id: branch.id,
+      name: branch.name,
+      color: branch.color,
+      messageCount: branch.messages.length,
+      children: [],
+      depth: 0, // Will be calculated in second pass
+      parentId: branch.parentId,
+      parentMessageId: branch.parentMessageId,
+      horizontalPosition: 0,
+    });
   });
 
-  // Assign horizontal positions to create a nicer tree layout
+  // Second pass: Build the tree structure and calculate depths
+  const mainBranch = nodeMap.get("main");
+  if (!mainBranch) return { flattenedTree: [], maxDepth: 0 };
+
+  const buildTree = (node: BranchNode, depth: number) => {
+    node.depth = depth;
+    // Find all children of this node
+    Object.values(branchesData).forEach((branch) => {
+      if (branch.parentId === node.id) {
+        const childNode = nodeMap.get(branch.id);
+        if (childNode) {
+          node.children.push(childNode);
+          buildTree(childNode, depth + 1);
+        }
+      }
+    });
+  };
+
+  buildTree(mainBranch, 0);
+
+  // Assign horizontal positions
   let maxDepth = 0;
   const assignPositions = (node: BranchNode, horizontalPos = 0) => {
     node.horizontalPosition = horizontalPos;
@@ -116,7 +108,7 @@ const processBranchesForTreeView = (
     }
   };
 
-  assignPositions(tree);
+  assignPositions(mainBranch);
 
   // Flatten tree for easier rendering
   const flattenedTree: BranchNode[] = [];
@@ -138,7 +130,7 @@ const processBranchesForTreeView = (
     }
   };
 
-  flattenTree(tree);
+  flattenTree(mainBranch);
 
   return { flattenedTree, maxDepth };
 };
