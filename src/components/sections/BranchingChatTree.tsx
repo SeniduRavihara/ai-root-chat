@@ -11,7 +11,7 @@ import BranchTreeVisualization from "./processBranchesForTreeView";
 export default function BranchingChatTree2() {
   const { currentUserData } = useData();
   const branchesData = currentUserData?.branches || {};
-  const [activeBranch, setActiveBranch] = useState<string>("crypto-focus");
+  const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
   const [treeViewHeight, setTreeViewHeight] = useState<number>(300);
