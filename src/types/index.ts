@@ -3,12 +3,27 @@
 import { User } from "firebase/auth";
 import React from "react";
 
-// export type DataContextType = {};
+export type DataContextType = {
+  currentUserData: UserWithMessages | null;
+  setCurrentUserData: React.Dispatch<
+    React.SetStateAction<UserWithMessages | null>
+  >;
+};
 
 export type AuthContextType = {
   currentUser: User | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
+
+export type UserDataType = {
+  uid: string;
+  userName: string;
+  email: string;
+};
+
+export interface UserWithMessages extends UserDataType {
+  branches: Record<string, BranchWithMessages>;
+}
 
 // ------------------------------------------------------
 

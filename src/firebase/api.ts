@@ -1,10 +1,13 @@
+import { mockBranchesData } from "@/components/sections/data";
+import { BranchWithMessages, UserDataType } from "@/types";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  User,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { auth, db, provider } from "./firebase_config";
 
 export const logout = async () => {
@@ -99,6 +102,72 @@ export const googleSignIn = async () => {
     return user;
   } catch (error) {
     console.error(error);
+    throw error;
+  }
+};
+
+export const featchCurrentUserData = async (currentUser: User) => {
+  try {
+    const documentRef = doc(db, "users", currentUser.uid);
+    const userDataDoc = await getDoc(documentRef);
+
+    if (userDataDoc.exists()) {
+      const userData = userDataDoc.data() as UserDataType;
+      console.log("Current user data fetched successfully");
+      return userData;
+    } else {
+      console.log("Document does not exist.");
+      return null;
+    }
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const fetchUserBranchData = async (
+  userId: string
+): Promise<Record<string, BranchWithMessages>> => {
+  const collectionRef = collection(db, "users", userId, "branches");
+
+  try {
+    const querySnapshot = await getDocs(collectionRef);
+    const mockData: Record<string, BranchWithMessages> = {};
+
+    querySnapshot.forEach((doc) => {
+      const branch = doc.data() as BranchWithMessages;
+      mockData[branch.id] = branch;
+    });
+
+    console.log(
+      `Successfully retrieved ${
+        Object.keys(mockData).length
+      } branches from Firestore for user: ${userId}`
+    );
+    return mockData;
+  } catch (error) {
+    console.error("Error retrieving data from Firestore:", error);
+    throw error;
+  }
+};
+
+export const addMockData = async (userId: string) => {
+  const collectionRef = collection(db, "users", userId, "branches");
+
+  try {
+    // Convert the Record to an array of branch objects
+    const branches = Object.values(mockBranchesData);
+
+    // Use Promise.all to add all branches concurrently
+    await Promise.all(
+      branches.map((branch) => setDoc(doc(collectionRef, branch.id), branch))
+    );
+
+    console.log(
+      `Successfully added ${branches.length} branches to Firestore for user: ${userId}`
+    );
+  } catch (error) {
+    console.error("Error adding mock data to Firestore:", error);
     throw error;
   }
 };

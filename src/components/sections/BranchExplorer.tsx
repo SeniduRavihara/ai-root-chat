@@ -171,6 +171,10 @@ export default function BranchExplorer({
     );
   };
 
+  const createNewChat = async () => {
+    
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -217,8 +221,11 @@ export default function BranchExplorer({
 
       {/* Actions Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-        <button className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium">
-          <Plus size={16} className="mr-2" /> New Branch
+        <button
+          onClick={createNewChat}
+          className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium"
+        >
+          <Plus size={16} className="mr-2" /> New Chat
         </button>
       </div>
 
