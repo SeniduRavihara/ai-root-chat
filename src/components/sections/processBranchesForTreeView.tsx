@@ -41,15 +41,15 @@ interface BranchTreeVisualizationProps {
   expandedTreeView: boolean;
   setExpandedTreeView: (expanded: boolean) => void;
   treeViewHeight: number;
-  mockBranchesData: Record<string, BranchWithMessages>;
+  branchesData: Record<string, BranchWithMessages>;
 }
 
 // Process data to create a hierarchical tree structure with node positions
 const processBranchesForTreeView = (
-  mockBranchesData: Record<string, BranchWithMessages>
+  branchesData: Record<string, BranchWithMessages>
 ) => {
   // Create a hierarchical structure
-  const mainBranch = mockBranchesData["main"];
+  const mainBranch = branchesData["main"];
   const tree: BranchNode = {
     id: mainBranch.id,
     name: mainBranch.name,
@@ -74,7 +74,7 @@ const processBranchesForTreeView = (
   };
 
   // Add all branches as nodes
-  Object.values(mockBranchesData).forEach((branch) => {
+  Object.values(branchesData).forEach((branch) => {
     if (branch.id === "main") return; // Skip main branch as we already added it
 
     const parentNode = findNode(branch.parentId, tree);
@@ -182,12 +182,12 @@ export default function BranchTreeVisualization({
   expandedTreeView,
   setExpandedTreeView,
   treeViewHeight,
-  mockBranchesData,
+  branchesData,
 }: BranchTreeVisualizationProps) {
   // Process branch data for visualization using memoization
   const { flattenedTree, maxDepth } = useMemo(
-    () => processBranchesForTreeView(mockBranchesData),
-    [mockBranchesData]
+    () => processBranchesForTreeView(branchesData),
+    [branchesData]
   );
 
   const connections = useMemo(
@@ -277,7 +277,7 @@ export default function BranchTreeVisualization({
                   >
                     <stop
                       offset="0%"
-                      stopColor={mockBranchesData[conn.source.id].color}
+                      stopColor={branchesData[conn.source.id].color}
                     />
                     <stop offset="100%" stopColor={conn.color} />
                   </linearGradient>

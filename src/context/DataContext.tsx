@@ -1,8 +1,10 @@
 "use client";
 
+import { mockBranchesData } from "@/components/sections/data";
 import { INITIAL_DATA_CONTEXT } from "@/constants";
 import { DataContextType, UserWithMessages } from "@/types";
 import { createContext, useEffect, useState } from "react";
+import { deepEqual } from "./AuthContext";
 
 export const DataContext = createContext<DataContextType>(INITIAL_DATA_CONTEXT);
 
@@ -11,10 +13,16 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
     useState<UserWithMessages | null>(null);
 
   useEffect(() => {
-    console.log(currentUserData);
+    if (currentUserData?.branches) {
+      console.log(deepEqual(currentUserData?.branches, mockBranchesData));
+    }
   }, [currentUserData]);
 
-  const value = { currentUserData, setCurrentUserData };
+  const value = {
+    currentUserData,
+    setCurrentUserData,
+    branchesData: currentUserData?.branches || mockBranchesData,
+  };
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
 

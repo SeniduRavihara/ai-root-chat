@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useData } from "@/hooks/useData";
+import { useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
+import BranchTreeVisualization from "./processBranchesForTreeView";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
-import BranchTreeVisualization from "./processBranchesForTreeView";
-import { mockBranchesData } from "./data";
+// import { mockBranchesData } from "./data";
 
 export default function BranchingChatTree2() {
+  const { branchesData } = useData();
   const [activeBranch, setActiveBranch] = useState<string>("crypto-focus");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
@@ -15,7 +17,7 @@ export default function BranchingChatTree2() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isResizing, setIsResizing] = useState<boolean>(false);
-  
+
   // Ref for the resize handle
   const resizeRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,7 +32,7 @@ export default function BranchingChatTree2() {
     const handleResize = () => {
       const newHeight = window.innerHeight;
       setWindowHeight(newHeight);
-      
+
       // Adjust tree view height if it exceeds the new window constraints
       const maxHeight = newHeight * MAX_HEIGHT_RATIO;
       if (treeViewHeight > maxHeight) {
@@ -46,7 +48,7 @@ export default function BranchingChatTree2() {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
-    
+
     const startY = e.clientY;
     const startHeight = treeViewHeight;
 
@@ -54,9 +56,12 @@ export default function BranchingChatTree2() {
       const deltaY = e.clientY - startY;
       const newHeight = startHeight + deltaY;
       const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
-      
+
       // Constrain the height within bounds
-      const constrainedHeight = Math.min(Math.max(newHeight, MIN_HEIGHT), maxHeight);
+      const constrainedHeight = Math.min(
+        Math.max(newHeight, MIN_HEIGHT),
+        maxHeight
+      );
       setTreeViewHeight(constrainedHeight);
     };
 
@@ -74,7 +79,7 @@ export default function BranchingChatTree2() {
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     setIsResizing(true);
-    
+
     const startY = e.touches[0].clientY;
     const startHeight = treeViewHeight;
 
@@ -82,8 +87,11 @@ export default function BranchingChatTree2() {
       const deltaY = e.touches[0].clientY - startY;
       const newHeight = startHeight + deltaY;
       const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
-      
-      const constrainedHeight = Math.min(Math.max(newHeight, MIN_HEIGHT), maxHeight);
+
+      const constrainedHeight = Math.min(
+        Math.max(newHeight, MIN_HEIGHT),
+        maxHeight
+      );
       setTreeViewHeight(constrainedHeight);
     };
 
@@ -104,7 +112,7 @@ export default function BranchingChatTree2() {
 
     for (let i = 0; i < branchPath.length; i++) {
       const { branchId, parentMessageId } = branchPath[i];
-      const branch = mockBranchesData[branchId];
+      const branch = branchesData[branchId];
 
       if (i === 0) {
         messages = [...branch.messages];
@@ -128,11 +136,12 @@ export default function BranchingChatTree2() {
   const getBranchPath = (
     branchId: string
   ): { branchId: string; parentMessageId: string | null }[] => {
-    const branchPath: { branchId: string; parentMessageId: string | null }[] = [];
+    const branchPath: { branchId: string; parentMessageId: string | null }[] =
+      [];
     let currentBranchId: string | null = branchId;
 
     while (currentBranchId) {
-      const branch: BranchWithMessages = mockBranchesData[currentBranchId];
+      const branch: BranchWithMessages = branchesData[currentBranchId];
       branchPath.unshift({
         branchId: currentBranchId,
         parentMessageId: branch.parentMessageId,
@@ -145,18 +154,18 @@ export default function BranchingChatTree2() {
 
   // Filter branches based on search query
   const filteredBranches: BranchWithMessages[] = Object.values(
-    mockBranchesData
+    branchesData
   ).filter((branch) =>
     branch.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100"
     >
       {/* Resizable Branch Tree Visualization */}
-      <div 
+      <div
         className="relative border-b border-gray-200 dark:border-gray-800"
         style={{ height: `${treeViewHeight}px` }}
       >
@@ -168,21 +177,21 @@ export default function BranchingChatTree2() {
           expandedTreeView={true} // Always expanded since we have manual resize
           setExpandedTreeView={() => {}} // No-op since we handle resize manually
           treeViewHeight={treeViewHeight}
-          mockBranchesData={mockBranchesData}
+          branchesData={branchesData}
         />
-        
+
         {/* Resize Handle */}
         <div
           ref={resizeRef}
           className={`absolute bottom-0 left-0 right-0 h-2 cursor-row-resize group
-            ${isResizing ? 'bg-blue-500' : 'hover:bg-blue-400'}
+            ${isResizing ? "bg-blue-500" : "hover:bg-blue-400"}
             transition-colors duration-150`}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
         >
           {/* Visual indicator for the resize handle */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-1 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 transition-colors duration-150" />
-          
+
           {/* Tooltip */}
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap">
             Drag to resize tree view
@@ -190,9 +199,7 @@ export default function BranchingChatTree2() {
         </div>
       </div>
 
-      {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar - Branch Explorer Component */}
         <BranchExplorer
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
@@ -201,15 +208,14 @@ export default function BranchingChatTree2() {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           filteredBranches={filteredBranches}
-          mockBranchesData={mockBranchesData}
+          mockBranchesData={branchesData}
           treeViewHeight={treeViewHeight}
         />
 
-        {/* Main content - Conversation View Component */}
         <ConversationView
           activeBranch={activeBranch}
           getBranchMessages={getBranchMessages}
-          mockBranchesData={mockBranchesData}
+          mockBranchesData={branchesData}
         />
       </div>
 
