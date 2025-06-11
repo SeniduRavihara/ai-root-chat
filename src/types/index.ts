@@ -1,4 +1,17 @@
 // types.ts
+
+import { User } from "firebase/auth";
+import React from "react";
+
+// export type DataContextType = {};
+
+export type AuthContextType = {
+  currentUser: User | null;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+};
+
+// ------------------------------------------------------
+
 export type Role = "user" | "assistant";
 
 export interface Message {

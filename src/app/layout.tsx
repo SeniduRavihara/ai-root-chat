@@ -1,3 +1,5 @@
+import AuthContextProvider from "@/context/AuthContext";
+import DataContextProvider from "@/context/DataContext";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -17,7 +19,6 @@ export const metadata: Metadata = {
   description: "A simple AI chat application for demonstration purposes",
 };
 
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +29,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <DataContextProvider>
+          <AuthContextProvider>{children}</AuthContextProvider>
+        </DataContextProvider>
       </body>
     </html>
   );

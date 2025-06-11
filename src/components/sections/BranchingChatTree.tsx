@@ -1,64 +1,121 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
 import BranchTreeVisualization from "./processBranchesForTreeView";
 import { mockBranchesData } from "./data";
 
-
-
 export default function BranchingChatTree2() {
   const [activeBranch, setActiveBranch] = useState<string>("crypto-focus");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
-  const [expandedTreeView, setExpandedTreeView] = useState<boolean>(false);
+  const [treeViewHeight, setTreeViewHeight] = useState<number>(300);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  
+  // Ref for the resize handle
+  const resizeRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Min and max heights for the tree view
+  const MIN_HEIGHT = 150;
+  const MAX_HEIGHT_RATIO = 0.8; // 80% of window height
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
 
     const handleResize = () => {
-      setWindowHeight(window.innerHeight);
+      const newHeight = window.innerHeight;
+      setWindowHeight(newHeight);
+      
+      // Adjust tree view height if it exceeds the new window constraints
+      const maxHeight = newHeight * MAX_HEIGHT_RATIO;
+      if (treeViewHeight > maxHeight) {
+        setTreeViewHeight(maxHeight);
+      }
     };
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [treeViewHeight]);
 
-  const treeViewHeight = expandedTreeView
-    ? Math.max(400, windowHeight * 0.5)
-    : Math.min(300, windowHeight * 0.3);
+  // Mouse down handler for starting resize
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    const startY = e.clientY;
+    const startHeight = treeViewHeight;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - startY;
+      const newHeight = startHeight + deltaY;
+      const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
+      
+      // Constrain the height within bounds
+      const constrainedHeight = Math.min(Math.max(newHeight, MIN_HEIGHT), maxHeight);
+      setTreeViewHeight(constrainedHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  // Touch handlers for mobile support
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    const startY = e.touches[0].clientY;
+    const startHeight = treeViewHeight;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const deltaY = e.touches[0].clientY - startY;
+      const newHeight = startHeight + deltaY;
+      const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
+      
+      const constrainedHeight = Math.min(Math.max(newHeight, MIN_HEIGHT), maxHeight);
+      setTreeViewHeight(constrainedHeight);
+    };
+
+    const handleTouchEnd = () => {
+      setIsResizing(false);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+
+    document.addEventListener("touchmove", handleTouchMove);
+    document.addEventListener("touchend", handleTouchEnd);
+  };
 
   // Get the full message history for a branch (including all ancestor messages)
   const getBranchMessages = (branchId: string): Message[] => {
-    // Track the complete branch path from root to current branch
     const branchPath = getBranchPath(branchId);
-
-    // Start with an empty message list
     let messages: Message[] = [];
 
-    // Process branches in order from root to leaf
     for (let i = 0; i < branchPath.length; i++) {
       const { branchId, parentMessageId } = branchPath[i];
       const branch = mockBranchesData[branchId];
 
       if (i === 0) {
-        // For the root branch, take all messages
         messages = [...branch.messages];
       } else {
-        // For child branches, find the fork point in our current messages
         const forkIndex = messages.findIndex(
           (msg) => msg.id === parentMessageId
         );
 
         if (forkIndex >= 0) {
-          // Keep messages up to and including the fork point
           messages = [...messages.slice(0, forkIndex + 1), ...branch.messages];
         } else {
-          // If fork point not found (shouldn't happen), just append
           messages = [...messages, ...branch.messages];
         }
       }
@@ -71,11 +128,9 @@ export default function BranchingChatTree2() {
   const getBranchPath = (
     branchId: string
   ): { branchId: string; parentMessageId: string | null }[] => {
-    const branchPath: { branchId: string; parentMessageId: string | null }[] =
-      [];
+    const branchPath: { branchId: string; parentMessageId: string | null }[] = [];
     let currentBranchId: string | null = branchId;
 
-    // Walk up the branch hierarchy
     while (currentBranchId) {
       const branch: BranchWithMessages = mockBranchesData[currentBranchId];
       branchPath.unshift({
@@ -96,42 +151,44 @@ export default function BranchingChatTree2() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-      {/* Top Navigation */}
-      {/* <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center">
-          <button
-            className="p-2 mr-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu size={20} />
-          </button>
-          <div className="text-xl font-bold flex items-center">
-            <GitBranch size={24} className="mr-2 text-blue-500" />
-            Branching Chat
+    <div 
+      ref={containerRef}
+      className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100"
+    >
+      {/* Resizable Branch Tree Visualization */}
+      <div 
+        className="relative border-b border-gray-200 dark:border-gray-800"
+        style={{ height: `${treeViewHeight}px` }}
+      >
+        <BranchTreeVisualization
+          activeBranch={activeBranch}
+          setActiveBranch={setActiveBranch}
+          hoveredBranch={hoveredBranch}
+          setHoveredBranch={setHoveredBranch}
+          expandedTreeView={true} // Always expanded since we have manual resize
+          setExpandedTreeView={() => {}} // No-op since we handle resize manually
+          treeViewHeight={treeViewHeight}
+          mockBranchesData={mockBranchesData}
+        />
+        
+        {/* Resize Handle */}
+        <div
+          ref={resizeRef}
+          className={`absolute bottom-0 left-0 right-0 h-2 cursor-row-resize group
+            ${isResizing ? 'bg-blue-500' : 'hover:bg-blue-400'}
+            transition-colors duration-150`}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+        >
+          {/* Visual indicator for the resize handle */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-1 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 transition-colors duration-150" />
+          
+          {/* Tooltip */}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap">
+            Drag to resize tree view
           </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <button className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md text-sm font-medium flex items-center">
-            <Clock size={16} className="mr-2" /> History
-          </button>
-          <button className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium flex items-center">
-            <Plus size={16} className="mr-2" /> New Branch
-          </button>
-        </div>
-      </div> */}
-
-      {/* Branch Tree Visualization Component */}
-      <BranchTreeVisualization
-        activeBranch={activeBranch}
-        setActiveBranch={setActiveBranch}
-        hoveredBranch={hoveredBranch}
-        setHoveredBranch={setHoveredBranch}
-        expandedTreeView={expandedTreeView}
-        setExpandedTreeView={setExpandedTreeView}
-        treeViewHeight={treeViewHeight}
-        mockBranchesData={mockBranchesData}
-      />
+      </div>
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
@@ -156,7 +213,7 @@ export default function BranchingChatTree2() {
         />
       </div>
 
-      {/* Add CSS for global animations */}
+      {/* Add CSS for global animations and resize cursor */}
       <style jsx global>{`
         @keyframes flowAnimation {
           0% {
@@ -180,6 +237,19 @@ export default function BranchingChatTree2() {
             transform: scale(1);
             opacity: 1;
           }
+        }
+
+        /* Custom cursor for resize handle */
+        .cursor-row-resize {
+          cursor: row-resize;
+        }
+
+        /* Prevent text selection during resize */
+        body.no-select {
+          user-select: none;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
         }
       `}</style>
     </div>

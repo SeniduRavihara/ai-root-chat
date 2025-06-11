@@ -1,12 +1,16 @@
+import { logout } from "@/firebase/api";
 import {
   ChevronDown,
   ChevronRight,
   GitBranch,
+  LogOut,
   MessageSquare,
   Plus,
   Search,
+  User,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Branch } from "../../types";
 
@@ -43,6 +47,8 @@ export default function BranchExplorer({
   const [expandedBranches, setExpandedBranches] = useState<
     Record<string, boolean>
   >({});
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const router = useRouter();
 
   // Function to toggle branch expansion
   const toggleBranchExpansion = (branchId: string) => {
@@ -163,6 +169,15 @@ export default function BranchExplorer({
     );
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   return (
     <div
       className={`${
@@ -203,6 +218,57 @@ export default function BranchExplorer({
         <button className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium">
           <Plus size={16} className="mr-2" /> New Branch
         </button>
+      </div>
+
+      {/* Account Menu */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800 relative">
+        <button
+          onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
+          className="w-full py-2 px-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center justify-between font-medium border border-gray-200 dark:border-gray-700 transition-colors duration-200"
+        >
+          <div className="flex items-center">
+            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+              <User size={16} className="text-blue-500" />
+            </div>
+            <span className="ml-3">Account</span>
+          </div>
+          <ChevronDown
+            size={16}
+            className={`transform transition-transform duration-200 ${
+              isAccountMenuOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {/* Account Dropdown Menu */}
+        {isAccountMenuOpen && (
+          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <User size={20} className="text-blue-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    User Name
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    user@example.com
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-2">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
+              >
+                <LogOut size={16} className="mr-2" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
