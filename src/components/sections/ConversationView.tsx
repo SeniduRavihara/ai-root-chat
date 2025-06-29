@@ -19,20 +19,14 @@ export default function ConversationView({
   getBranchMessages,
   branchesData,
 }: ConversationViewProps) {
-  const { setCurrentUserData, getActiveThread, addMessageToThread } = useData();
+  const { setCurrentUserData } = useData();
 
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const activeThread = getActiveThread();
-
-  // Get messages from the active thread if available, otherwise from branch
+  // Get messages from the active branch
   const getMessages = (): Message[] => {
-    if (activeThread && activeThread.messages.length > 0) {
-      return activeThread.messages;
-    }
-    // Fallback to branch messages if no thread messages
     const branchMessages = getBranchMessages(activeBranch);
     return branchMessages;
   };
@@ -80,19 +74,15 @@ export default function ConversationView({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!message.trim() || !activeThread) return;
+    if (!message.trim()) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user" as const,
       content: message,
       timestamp: new Date().toISOString(),
-      threadId: activeThread.threadId,
       branchId: activeBranch,
     };
-
-    // Add user message to thread
-    addMessageToThread(activeThread.threadId, userMessage);
 
     // Update user data for branch compatibility
     setCurrentUserData((prev) => {
@@ -136,12 +126,8 @@ export default function ConversationView({
       role: "assistant" as const,
       content: assistantMessage,
       timestamp: new Date().toISOString(),
-      threadId: activeThread.threadId,
       branchId: activeBranch,
     };
-
-    // Add assistant message to thread
-    addMessageToThread(activeThread.threadId, assistantMessageObj);
 
     // Add the assistant's reply to the branch
     setCurrentUserData((prev) => {
@@ -162,23 +148,10 @@ export default function ConversationView({
     setIsTyping(false);
   };
 
-  // Show thread info in header if available
-  const renderThreadInfo = () => {
-    if (activeThread) {
-      return (
-        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-          • Thread: {activeThread.metadata.title}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
       {/* Branch header */}
       <Header branchesData={branchesData} activeBranch={activeBranch} />
-      {renderThreadInfo()}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950">
@@ -212,8 +185,7 @@ export default function ConversationView({
                     currentMessageBranchId &&
                     prevMessageBranchId !== currentMessageBranchId
                   ) {
-                    const currentBranch =
-                      branchesData[currentMessageBranchId];
+                    const currentBranch = branchesData[currentMessageBranchId];
 
                     return (
                       <div className="flex items-center justify-center py-4">

@@ -6,17 +6,9 @@ import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
 import BranchTreeVisualization from "./processBranchesForTreeView";
-import ThreadManager from "./ThreadManager";
-// import { mockBranchesData } from "./data";
 
 export default function BranchingChatTree() {
-  const {
-    currentUserData,
-    threadManager,
-    getActiveThread,
-    switchThread,
-    createThread,
-  } = useData();
+  const { currentUserData } = useData();
 
   const branchesData = useMemo(
     () => currentUserData?.branches || {},
@@ -29,7 +21,6 @@ export default function BranchingChatTree() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isResizing, setIsResizing] = useState<boolean>(false);
-  const [threadManagerOpen, setThreadManagerOpen] = useState<boolean>(false);
 
   // Ref for the resize handle
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -39,27 +30,12 @@ export default function BranchingChatTree() {
   const MIN_HEIGHT = 150;
   const MAX_HEIGHT_RATIO = 0.8; // 80% of window height
 
-  const activeThread = getActiveThread();
-
-  // Sync active branch with active thread
+  // Initialize with main branch if it exists
   useEffect(() => {
-    if (activeThread && activeThread.branchId !== activeBranch) {
-      setActiveBranch(activeThread.branchId);
+    if (Object.keys(branchesData).length > 0 && !branchesData[activeBranch]) {
+      setActiveBranch(Object.keys(branchesData)[0]);
     }
-  }, [activeThread, activeBranch]);
-
-  // Initialize with a thread if none exists
-  useEffect(() => {
-    if (
-      threadManager.threadOrder.length === 0 &&
-      Object.keys(branchesData).length > 0
-    ) {
-      // Create threads from all existing branches
-      Object.keys(branchesData).forEach((branchId) => {
-        createThread(branchId);
-      });
-    }
-  }, [threadManager.threadOrder.length, branchesData, createThread]);
+  }, [branchesData, activeBranch]);
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -140,21 +116,9 @@ export default function BranchingChatTree() {
     document.addEventListener("touchend", handleTouchEnd);
   };
 
-  // Enhanced branch switching that also updates thread context
+  // Enhanced branch switching
   const handleBranchSwitch = (branchId: string) => {
     setActiveBranch(branchId);
-
-    // Find or create a thread for this branch
-    const existingThread = Object.values(threadManager.threads).find(
-      (thread) => thread.branchId === branchId
-    );
-
-    if (existingThread) {
-      switchThread(existingThread.threadId);
-    } else {
-      // Create a new thread for this branch
-      createThread(branchId);
-    }
   };
 
   // Get the full message history for a branch (including all ancestor messages)
@@ -270,14 +234,6 @@ export default function BranchingChatTree() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Thread Manager Sidebar */}
-        {threadManagerOpen && (
-          <ThreadManager
-            isOpen={threadManagerOpen}
-            onToggle={() => setThreadManagerOpen(!threadManagerOpen)}
-          />
-        )}
-
         <BranchExplorer
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
@@ -288,7 +244,6 @@ export default function BranchingChatTree() {
           filteredBranches={filteredBranches}
           branchesData={branchesData}
           treeViewHeight={treeViewHeight}
-          onThreadManagerToggle={() => setThreadManagerOpen(!threadManagerOpen)}
         />
 
         <ConversationView

@@ -1,5 +1,5 @@
 import { mockBranchesData } from "@/components/sections/data";
-import { Message } from "@/types";
+import { BranchWithMessages, Message } from "@/types";
 
 /**
  * Test utility to verify branch inheritance
@@ -16,7 +16,8 @@ export const testBranchInheritance = () => {
       let currentBranchId: string | null = bid;
 
       while (currentBranchId) {
-        const branch = mockBranchesData[currentBranchId];
+        const branch: BranchWithMessages | undefined =
+          mockBranchesData[currentBranchId];
         if (!branch) break;
 
         path.unshift({
@@ -34,7 +35,8 @@ export const testBranchInheritance = () => {
 
     for (let i = 0; i < branchPath.length; i++) {
       const { branchId: currentBranchId, parentMessageId } = branchPath[i];
-      const branch = mockBranchesData[currentBranchId];
+      const branch: BranchWithMessages | undefined =
+        mockBranchesData[currentBranchId];
 
       if (!branch) continue;
 
