@@ -7,7 +7,15 @@ import {
   signOut,
   User,
 } from "firebase/auth";
-import { arrayUnion, collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import {
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { auth, db, provider } from "./firebase_config";
 
 export const logout = async () => {
@@ -181,4 +189,17 @@ export async function addMessageToBranch(
   await updateDoc(branchRef, {
     messages: arrayUnion(message),
   });
+}
+
+/**
+ * Create a new branch for a user in Firestore
+ * @param uid - user id
+ * @param branchData - branch object (id, name, color, parentId, parentMessageId, messages)
+ */
+export async function createBranchForUser(
+  uid: string,
+  branchData: BranchWithMessages
+) {
+  const branchRef = doc(db, "users", uid, "branches", branchData.id);
+  await setDoc(branchRef, branchData);
 }

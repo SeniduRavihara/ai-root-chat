@@ -1,9 +1,10 @@
 "use client";
 
-import { addMessageToBranch } from "@/firebase/api";
+import { addMessageToBranch, createBranchForUser } from "@/firebase/api";
 import { useData } from "@/hooks/useData";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { BranchWithMessages, Message } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
@@ -25,6 +26,7 @@ export default function ConversationView({
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
 
   // Get messages from the active branch
   const getMessages = (): Message[] => {
@@ -70,8 +72,26 @@ export default function ConversationView({
 
   // Auto scroll to bottom of messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [allMessages]);
+    if (shouldScrollToBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setShouldScrollToBottom(false);
+    }
+  }, [allMessages, shouldScrollToBottom]);
+
+  // Helper to generate a random color
+  function getRandomColor() {
+    const colors = [
+      "#6366f1",
+      "#ec4899",
+      "#10b981",
+      "#f59e0b",
+      "#8b5cf6",
+      "#14b8a6",
+      "#f43f5e",
+      "#0ea5e9",
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -102,6 +122,7 @@ export default function ConversationView({
 
     setMessage("");
     setIsTyping(true);
+    setShouldScrollToBottom(true);
 
     // Send to API and get the assistant's reply
     const response = await fetch("/api/chat", {
@@ -155,6 +176,40 @@ export default function ConversationView({
     );
 
     setIsTyping(false);
+    setShouldScrollToBottom(true);
+  };
+
+  // Branch creation handler
+  const handleCreateBranch = async (
+    parentBranchId: string,
+    parentMessageId: string
+  ) => {
+    if (!currentUserData) return;
+    const branchName = prompt("Enter a name for the new branch:");
+    if (!branchName) return;
+    const newBranchId = uuidv4();
+    // Do NOT copy parent messages; only store new messages in this branch
+    const newBranch = {
+      id: newBranchId,
+      name: branchName,
+      color: getRandomColor(),
+      parentId: parentBranchId,
+      parentMessageId,
+      messages: [], // Only new messages for this branch
+    };
+    // Add to Firestore
+    await createBranchForUser(currentUserData.uid, newBranch);
+    // Add to local state
+    setCurrentUserData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        branches: {
+          ...prev.branches,
+          [newBranchId]: newBranch,
+        },
+      };
+    });
   };
 
   return (
@@ -286,7 +341,15 @@ export default function ConversationView({
                     )}
 
                     {message.role === "assistant" && (
-                      <button className="ml-auto text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center">
+                      <button
+                        className="ml-auto text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center"
+                        onClick={() =>
+                          handleCreateBranch(
+                            getMessageBranchId(message.id)!,
+                            message.id
+                          )
+                        }
+                      >
                         <GitFork size={12} className="mr-1" /> Branch
                       </button>
                     )}
