@@ -149,12 +149,12 @@ export default function ConversationView({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Branch header */}
       <Header branchesData={branchesData} activeBranch={activeBranch} />
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-0">
         {allMessages.map((message, index) => {
           // Determine if this message is from the active branch or inherited
           const isFromCurrentBranch = isMessageFromActiveBranch(message.id);

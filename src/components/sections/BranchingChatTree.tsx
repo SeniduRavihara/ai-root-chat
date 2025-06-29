@@ -58,6 +58,7 @@ export default function BranchingChatTree() {
   // Mouse down handler for starting resize
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
 
     const startY = e.clientY;
@@ -89,6 +90,7 @@ export default function BranchingChatTree() {
   // Touch handlers for mobile support
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
 
     const startY = e.touches[0].clientY;
@@ -196,61 +198,73 @@ export default function BranchingChatTree() {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100"
+      className="relative flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden"
     >
-      {/* Resizable Branch Tree Visualization */}
+      {/* Left Sidebar - Full Height */}
+      <BranchExplorer
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeBranch={activeBranch}
+        setActiveBranch={handleBranchSwitch}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        filteredBranches={filteredBranches}
+        branchesData={branchesData}
+      />
+
+      {/* Right Content Area - Responsive to sidebar state */}
       <div
-        className="relative border-b border-gray-200 dark:border-gray-800"
-        style={{ height: `${treeViewHeight}px` }}
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "ml-80" : "ml-0"
+        }`}
       >
-        <BranchTreeVisualization
-          activeBranch={activeBranch}
-          setActiveBranch={handleBranchSwitch}
-          hoveredBranch={hoveredBranch}
-          setHoveredBranch={setHoveredBranch}
-          expandedTreeView={true} // Always expanded since we have manual resize
-          setExpandedTreeView={() => {}} // No-op since we handle resize manually
-          treeViewHeight={treeViewHeight}
-          branchesData={branchesData}
-        />
-
-        {/* Resize Handle */}
+        {/* Resizable Branch Tree Visualization */}
         <div
-          ref={resizeRef}
-          className={`absolute bottom-0 left-0 right-0 h-2 cursor-row-resize group
-            ${isResizing ? "bg-blue-500" : "hover:bg-blue-400"}
-            transition-colors duration-150`}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+          className="relative border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
+          style={{
+            height: `${treeViewHeight}px`,
+            minHeight: `${MIN_HEIGHT}px`,
+          }}
         >
-          {/* Visual indicator for the resize handle */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-1 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 transition-colors duration-150" />
+          <BranchTreeVisualization
+            activeBranch={activeBranch}
+            setActiveBranch={handleBranchSwitch}
+            hoveredBranch={hoveredBranch}
+            setHoveredBranch={setHoveredBranch}
+            expandedTreeView={true} // Always expanded since we have manual resize
+            setExpandedTreeView={() => {}} // No-op since we handle resize manually
+            treeViewHeight={treeViewHeight}
+            branchesData={branchesData}
+          />
 
-          {/* Tooltip */}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap">
-            Drag to resize tree view
+          {/* Resize Handle */}
+          <div
+            ref={resizeRef}
+            className={`absolute bottom-0 left-0 right-0 h-3 cursor-row-resize group z-10
+              ${isResizing ? "bg-blue-500" : "hover:bg-blue-400"}
+              transition-colors duration-150`}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            style={{ cursor: "row-resize" }}
+          >
+            {/* Visual indicator for the resize handle */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 transition-colors duration-150" />
+
+            {/* Tooltip */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
+              Drag to resize tree view
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <BranchExplorer
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          activeBranch={activeBranch}
-          setActiveBranch={handleBranchSwitch}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          filteredBranches={filteredBranches}
-          branchesData={branchesData}
-          treeViewHeight={treeViewHeight}
-        />
-
-        <ConversationView
-          activeBranch={activeBranch}
-          getBranchMessages={getBranchMessages}
-          branchesData={branchesData}
-        />
+        {/* Conversation View - Takes remaining height */}
+        <div className="flex-1 overflow-auto">
+          <ConversationView
+            activeBranch={activeBranch}
+            getBranchMessages={getBranchMessages}
+            branchesData={branchesData}
+          />
+        </div>
       </div>
 
       {/* Add CSS for global animations and resize cursor */}
@@ -281,7 +295,7 @@ export default function BranchingChatTree() {
 
         /* Custom cursor for resize handle */
         .cursor-row-resize {
-          cursor: row-resize;
+          cursor: row-resize !important;
         }
 
         /* Prevent text selection during resize */
@@ -290,6 +304,11 @@ export default function BranchingChatTree() {
           -webkit-user-select: none;
           -moz-user-select: none;
           -ms-user-select: none;
+        }
+
+        /* Ensure resize handle is always on top */
+        .resize-handle {
+          z-index: 1000;
         }
       `}</style>
     </div>

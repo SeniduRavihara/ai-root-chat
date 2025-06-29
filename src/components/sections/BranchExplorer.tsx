@@ -2,6 +2,7 @@ import { logout } from "@/firebase/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   GitBranch,
   LogOut,
@@ -9,7 +10,6 @@ import {
   Plus,
   Search,
   User,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -24,7 +24,6 @@ interface BranchExplorerProps {
   setSearchQuery: (query: string) => void;
   filteredBranches: BranchWithMessages[];
   branchesData: Record<string, BranchWithMessages>;
-  treeViewHeight: number;
 }
 
 interface BranchWithMessages extends Branch {
@@ -42,7 +41,6 @@ export default function BranchExplorer({
   setSearchQuery,
   filteredBranches,
   branchesData,
-  treeViewHeight,
 }: BranchExplorerProps) {
   const { currentUser } = useAuth();
   // State to track which branches are expanded in the tree view
@@ -183,102 +181,119 @@ export default function BranchExplorer({
   };
 
   return (
-    <div
-      className={`${
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } lg:translate-x-0 w-full lg:w-1/4 max-w-sm border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-y-auto flex flex-col transition-all duration-300 absolute lg:relative z-10 h-[calc(100%-${treeViewHeight}px-64px)] lg:h-auto`}
-    >
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Branch Explorer</h3>
-        <div className="flex items-center space-x-2">
+    <>
+      {/* Collapsed Sidebar Toggle Button */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="fixed left-4 top-4 z-50 p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          <ChevronRight size={20} />
+        </button>
+      )}
+
+      {/* Main Sidebar */}
+      <div
+        className={`${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } absolute left-0 top-0 w-80 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-all duration-300 h-full z-40`}
+      >
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Branch Explorer</h3>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+              title="Collapse sidebar"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-2.5 text-gray-400"
+            />
+            <input
+              type="text"
+              placeholder="Search branches..."
+              className="w-full py-2 pl-10 pr-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Branches List with Tree Structure */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {Object.values(branchTree).map((branch) => renderBranchNode(branch))}
+        </div>
+
+        {/* Actions Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           <button
-            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            onClick={createNewChat}
+            className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium"
           >
-            <X size={18} />
+            <Plus size={16} className="mr-2" /> New Chat
           </button>
         </div>
-      </div>
 
-      {/* Search Bar */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search branches..."
-            className="w-full py-2 pl-10 pr-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Branches List with Tree Structure */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {Object.values(branchTree).map((branch) => renderBranchNode(branch))}
-      </div>
-
-      {/* Actions Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-        <button
-          onClick={createNewChat}
-          className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium"
-        >
-          <Plus size={16} className="mr-2" /> New Chat
-        </button>
-      </div>
-
-      {/* Account Menu */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800 relative">
-        <button
-          onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-          className="w-full py-2 px-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center justify-between font-medium border border-gray-200 dark:border-gray-700 transition-colors duration-200"
-        >
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-              <User size={16} className="text-blue-500" />
+        {/* Account Menu */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800 relative">
+          <button
+            onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
+            className="w-full py-2 px-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center justify-between font-medium border border-gray-200 dark:border-gray-700 transition-colors duration-200"
+          >
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <User size={16} className="text-blue-500" />
+              </div>
+              <span className="ml-3">Account</span>
             </div>
-            <span className="ml-3">Account</span>
-          </div>
-          <ChevronDown
-            size={16}
-            className={`transform transition-transform duration-200 ${
-              isAccountMenuOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+            <ChevronDown
+              size={16}
+              className={`transform transition-transform duration-200 ${
+                isAccountMenuOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-        {/* Account Dropdown Menu */}
-        {isAccountMenuOpen && (
-          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <User size={20} className="text-blue-500" />
-                </div>
-                <div className="ml-3">
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {currentUser?.displayName || "User"}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {currentUser?.email}
-                  </p>
+          {/* Account Dropdown Menu */}
+          {isAccountMenuOpen && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <User size={20} className="text-blue-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {currentUser?.displayName || "User"}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {currentUser?.email}
+                    </p>
+                  </div>
                 </div>
               </div>
+              <div className="p-2">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
+                >
+                  <LogOut size={16} className="mr-2" />
+                  Sign out
+                </button>
+              </div>
             </div>
-            <div className="p-2">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
-              >
-                <LogOut size={16} className="mr-2" />
-                Sign out
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

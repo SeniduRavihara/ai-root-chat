@@ -201,7 +201,7 @@ export default function BranchTreeVisualization({
 
   return (
     <div
-      className="border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 overflow-hidden transition-all duration-300"
+      className="w-full h-full bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300"
       style={{ height: `${treeViewHeight}px` }}
     >
       <div className="flex justify-between items-center px-6 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -229,7 +229,7 @@ export default function BranchTreeVisualization({
         </div>
       </div>
       <div
-        className="relative overflow-auto"
+        className="relative overflow-auto w-full"
         style={{
           height: `calc(${treeViewHeight}px - 56px)`,
         }}
