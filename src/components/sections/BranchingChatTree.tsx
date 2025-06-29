@@ -6,6 +6,7 @@ import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
 import BranchTreeVisualization from "./processBranchesForTreeView";
+import ThreadManager from "./ThreadManager";
 // import { mockBranchesData } from "./data";
 
 export default function BranchingChatTree() {
@@ -18,6 +19,7 @@ export default function BranchingChatTree() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [threadManagerOpen, setThreadManagerOpen] = useState<boolean>(false);
 
   // Ref for the resize handle
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -210,6 +212,14 @@ export default function BranchingChatTree() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Thread Manager Sidebar */}
+        {threadManagerOpen && (
+          <ThreadManager
+            isOpen={threadManagerOpen}
+            onToggle={() => setThreadManagerOpen(!threadManagerOpen)}
+          />
+        )}
+
         <BranchExplorer
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
@@ -220,6 +230,7 @@ export default function BranchingChatTree() {
           filteredBranches={filteredBranches}
           mockBranchesData={branchesData}
           treeViewHeight={treeViewHeight}
+          onThreadManagerToggle={() => setThreadManagerOpen(!threadManagerOpen)}
         />
 
         <ConversationView

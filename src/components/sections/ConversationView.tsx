@@ -19,11 +19,13 @@ export default function ConversationView({
   getBranchMessages,
   mockBranchesData,
 }: ConversationViewProps) {
-  const { setCurrentUserData } = useData();
+  const { setCurrentUserData, getActiveThread, updateThreadMetadata } =
+    useData();
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  const activeThread = getActiveThread();
   const allMessages = getBranchMessages(activeBranch);
 
   // Format timestamp to readable string
@@ -66,24 +68,34 @@ export default function ConversationView({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !activeThread) return;
 
-    // Optionally, add the user's message to the branch immediately
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user" as const,
+      content: message,
+      timestamp: new Date().toISOString(),
+      threadId: activeThread.threadId,
+      branchId: activeBranch,
+    };
+
+    // Add user message to thread
+    const updatedMessages = [...activeThread.messages, userMessage];
+
+    // Update thread with new message
+    updateThreadMetadata(activeThread.threadId, {
+      messageCount: updatedMessages.length,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Update user data for branch compatibility
     setCurrentUserData((prev) => {
       if (!prev) return prev;
       const updatedBranches = {
         ...prev.branches,
         [activeBranch]: {
           ...prev.branches[activeBranch],
-          messages: [
-            ...prev.branches[activeBranch].messages,
-            {
-              id: `user-${Date.now()}`,
-              role: "user",
-              content: message,
-              timestamp: new Date().toISOString(),
-            },
-          ],
+          messages: [...prev.branches[activeBranch].messages, userMessage],
         },
       };
       return { ...prev, branches: updatedBranches };
@@ -96,15 +108,15 @@ export default function ConversationView({
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
-      "Content-Type": "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-      question: message,
-      // Gemini expects history as an array of {role, parts: [{text}]}
-      history: allMessages.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
+        question: message,
+        // Gemini expects history as an array of {role, parts: [{text}]}
+        history: allMessages.map((msg) => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        })),
       }),
     });
 
@@ -112,6 +124,24 @@ export default function ConversationView({
     const assistantMessage = data.answer; // adjust if your API returns differently
 
     console.log("Assistant's reply:", assistantMessage);
+
+    const assistantMessageObj: Message = {
+      id: `assistant-${Date.now()}`,
+      role: "assistant" as const,
+      content: assistantMessage,
+      timestamp: new Date().toISOString(),
+      threadId: activeThread.threadId,
+      branchId: activeBranch,
+    };
+
+    // Add assistant message to thread
+    const finalMessages = [...updatedMessages, assistantMessageObj];
+
+    // Update thread with assistant message
+    updateThreadMetadata(activeThread.threadId, {
+      messageCount: finalMessages.length,
+      updatedAt: new Date().toISOString(),
+    });
 
     // Add the assistant's reply to the branch
     setCurrentUserData((prev) => {
@@ -122,12 +152,7 @@ export default function ConversationView({
           ...prev.branches[activeBranch],
           messages: [
             ...prev.branches[activeBranch].messages,
-            {
-              id: `user-${Date.now()}`,
-              role: "assistant",
-              content: assistantMessage,
-              timestamp: new Date().toISOString(),
-            },
+            assistantMessageObj,
           ],
         },
       };

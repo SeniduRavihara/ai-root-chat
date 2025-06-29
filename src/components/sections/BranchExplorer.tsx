@@ -25,6 +25,7 @@ interface BranchExplorerProps {
   filteredBranches: BranchWithMessages[];
   mockBranchesData: Record<string, BranchWithMessages>;
   treeViewHeight: number;
+  onThreadManagerToggle: () => void;
 }
 
 interface BranchWithMessages extends Branch {
@@ -43,6 +44,7 @@ export default function BranchExplorer({
   filteredBranches,
   mockBranchesData,
   treeViewHeight,
+  onThreadManagerToggle,
 }: BranchExplorerProps) {
   const { currentUser } = useAuth();
   // State to track which branches are expanded in the tree view
@@ -171,9 +173,7 @@ export default function BranchExplorer({
     );
   };
 
-  const createNewChat = async () => {
-    
-  };
+  const createNewChat = async () => {};
 
   const handleLogout = async () => {
     try {
@@ -192,12 +192,21 @@ export default function BranchExplorer({
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Branch Explorer</h3>
-        <button
-          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        >
-          <X size={18} />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onThreadManagerToggle}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+            title="Toggle Thread Manager"
+          >
+            <MessageSquare size={18} />
+          </button>
+          <button
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Search Bar */}
