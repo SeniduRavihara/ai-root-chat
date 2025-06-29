@@ -68,11 +68,12 @@ export interface Branch {
   name: string;
   parentId: string | null;
   parentMessageId: string | null;
-  isExpanded?: boolean;
-  level?: number;
+  color: string;
+  // isExpanded?: boolean;
+  // level?: number;
 }
 
 export interface BranchWithMessages extends Branch {
-  color: string;
+  // color: string;color: string;color: string;color: string;color: string;color: string;color: string;color: string;
   messages: Message[];
 }

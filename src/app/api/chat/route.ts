@@ -36,19 +36,49 @@ export async function POST(req: Request) {
       }
     }
 
+    // Add a system message to instruct the model to avoid markdown and keep responses simple
+    const systemMessage = {
+      role: "user",
+      parts: [
+        {
+          text:
+            "You are an assistant. Please keep your responses simple and do not use markdown formatting. Only return plain text answers.",
+        },
+      ],
+    };
+
+    // Only add the system message if it's not already present in the history
+    let fullHistory = [];
+    if (
+      !history.length ||
+      !(
+        history[0]?.parts &&
+        history[0].parts[0]?.text &&
+        history[0].parts[0].text.includes("do not use markdown")
+      )
+    ) {
+      fullHistory = [systemMessage, ...history];
+    } else {
+      fullHistory = [...history];
+    }
+
     const currentMessage = {
       role: "user",
       parts: [{ text: question }],
     };
 
-    const fullHistory = [...history, currentMessage];
+    fullHistory.push(currentMessage);
 
     const result = await gemi.models.generateContent({
       model: "gemini-2.0-flash",
       contents: fullHistory,
     });
 
-    const answer = result.text || "No response generated.";
+    // Prefer plain text, fallback if not present
+    let answer = result.text || "No response generated.";
+
+    // Remove markdown formatting if any sneaks through (basic strip)
+    answer = answer.replace(/[`*_#>\[\]\(\)]/g, "");
 
     fullHistory.push({
       role: "model",

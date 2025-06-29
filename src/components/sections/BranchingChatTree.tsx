@@ -240,16 +240,16 @@ export default function BranchingChatTree() {
           {/* Resize Handle */}
           <div
             ref={resizeRef}
-            className={`absolute bottom-0 left-0 right-0 h-3 cursor-row-resize group z-10
-              ${isResizing ? "bg-blue-500" : "hover:bg-blue-400"}
-              transition-colors duration-150`}
+            className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
+              bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             style={{ cursor: "row-resize" }}
           >
-            {/* Visual indicator for the resize handle */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 transition-colors duration-150" />
-
+            {/* Visible separator line */}
+            <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
+            {/* Drag indicator */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
             {/* Tooltip */}
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
               Drag to resize tree view

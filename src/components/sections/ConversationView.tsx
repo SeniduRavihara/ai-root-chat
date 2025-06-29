@@ -1,5 +1,6 @@
 "use client";
 
+import { addMessageToBranch } from "@/firebase/api";
 import { useData } from "@/hooks/useData";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -19,7 +20,7 @@ export default function ConversationView({
   getBranchMessages,
   branchesData,
 }: ConversationViewProps) {
-  const { setCurrentUserData } = useData();
+  const { setCurrentUserData, currentUserData } = useData();
 
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -74,7 +75,7 @@ export default function ConversationView({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !currentUserData) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -96,6 +97,8 @@ export default function ConversationView({
       };
       return { ...prev, branches: updatedBranches };
     });
+
+    await addMessageToBranch(currentUserData?.uid, activeBranch, userMessage);
 
     setMessage("");
     setIsTyping(true);
@@ -144,6 +147,12 @@ export default function ConversationView({
       };
       return { ...prev, branches: updatedBranches };
     });
+
+    await addMessageToBranch(
+      currentUserData.uid,
+      activeBranch,
+      assistantMessageObj
+    );
 
     setIsTyping(false);
   };

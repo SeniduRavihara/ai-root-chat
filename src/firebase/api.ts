@@ -7,7 +7,7 @@ import {
   signOut,
   User,
 } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db, provider } from "./firebase_config";
 
 export const logout = async () => {
@@ -132,19 +132,19 @@ export const fetchUserBranchData = async (
 
   try {
     const querySnapshot = await getDocs(collectionRef);
-    const mockData: Record<string, BranchWithMessages> = {};
+    const branchData: Record<string, BranchWithMessages> = {};
 
     querySnapshot.forEach((doc) => {
       const branch = doc.data() as BranchWithMessages;
-      mockData[branch.id] = branch;
+      branchData[branch.id] = branch;
     });
 
     console.log(
       `Successfully retrieved ${
-        Object.keys(mockData).length
+        Object.keys(branchData).length
       } branches from Firestore for user: ${userId}`
     );
-    return mockData;
+    return branchData;
   } catch (error) {
     console.error("Error retrieving data from Firestore:", error);
     throw error;
@@ -171,3 +171,14 @@ export const addMockData = async (userId: string) => {
     throw error;
   }
 };
+
+export async function addMessageToBranch(
+  uid: string,
+  branchId: string,
+  message: any
+) {
+  const branchRef = doc(db, "users", uid, "branches", branchId);
+  await updateDoc(branchRef, {
+    messages: arrayUnion(message),
+  });
+}
