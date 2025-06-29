@@ -5,7 +5,7 @@ type ChatInputProps = {
   message: string;
   setMessage: (msg: string) => void;
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  mockBranchesData: Record<string, BranchWithMessages>;
+  branchesData: Record<string, BranchWithMessages>;
   activeBranch: string;
 };
 
@@ -13,10 +13,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   message,
   setMessage,
   handleSubmit,
-  mockBranchesData,
+  branchesData,
   activeBranch,
 }) => {
-  const branch = mockBranchesData[activeBranch];
+  const branch = branchesData[activeBranch];
 
   return (
     <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">

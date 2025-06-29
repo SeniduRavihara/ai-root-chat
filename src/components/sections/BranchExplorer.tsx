@@ -23,7 +23,7 @@ interface BranchExplorerProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   filteredBranches: BranchWithMessages[];
-  mockBranchesData: Record<string, BranchWithMessages>;
+  branchesData: Record<string, BranchWithMessages>;
   treeViewHeight: number;
   onThreadManagerToggle: () => void;
 }
@@ -42,7 +42,7 @@ export default function BranchExplorer({
   searchQuery,
   setSearchQuery,
   filteredBranches,
-  mockBranchesData,
+  branchesData,
   treeViewHeight,
   onThreadManagerToggle,
 }: BranchExplorerProps) {
@@ -157,7 +157,7 @@ export default function BranchExplorer({
                 {branch.parentId && (
                   <span className="ml-3 flex items-center">
                     <GitBranch size={12} className="mr-1" />
-                    from {mockBranchesData[branch.parentId]?.name || "Parent"}
+                    from {branchesData[branch.parentId]?.name || "Parent"}
                   </span>
                 )}
               </div>

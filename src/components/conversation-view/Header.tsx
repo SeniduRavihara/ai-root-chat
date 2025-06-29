@@ -3,12 +3,12 @@ import { GitBranch, GitFork, MoreHorizontal } from "lucide-react";
 import React from "react";
 
 type HeaderProps = {
-  mockBranchesData: Record<string, BranchWithMessages>;
+  branchesData: Record<string, BranchWithMessages>;
   activeBranch: string;
 };
 
-const Header: React.FC<HeaderProps> = ({ mockBranchesData, activeBranch }) => {
-  const branch = mockBranchesData[activeBranch];
+const Header: React.FC<HeaderProps> = ({ branchesData, activeBranch }) => {
+  const branch = branchesData[activeBranch];
   if (!branch) {
     // Optionally, render a fallback UI or nothing
     return (
@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ mockBranchesData, activeBranch }) => {
     );
   }
   const parentBranch = branch.parentId
-    ? mockBranchesData[branch.parentId]
+    ? branchesData[branch.parentId]
     : undefined;
   return (
     <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">

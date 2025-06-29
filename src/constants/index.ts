@@ -17,6 +17,7 @@ export const INITIAL_DATA_CONTEXT = {
   updateThreadMetadata: () => {},
   getActiveThread: () => null,
   getThreadMessages: () => [],
+  addMessageToThread: () => {},
 };
 
 export const INITIAL_AUTH_CONTEXT = {

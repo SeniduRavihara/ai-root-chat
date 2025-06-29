@@ -41,9 +41,13 @@ export type DataContextType = {
   createThread: (branchId: string, initialMessage?: Message) => string;
   switchThread: (threadId: string) => void;
   deleteThread: (threadId: string) => void;
-  updateThreadMetadata: (threadId: string, metadata: Partial<ThreadMetadata>) => void;
+  updateThreadMetadata: (
+    threadId: string,
+    metadata: Partial<ThreadMetadata>
+  ) => void;
   getActiveThread: () => ThreadContext | null;
   getThreadMessages: (threadId: string) => Message[];
+  addMessageToThread: (threadId: string, message: Message) => void;
 };
 
 export type AuthContextType = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useData } from "@/hooks/useData";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
@@ -10,8 +10,18 @@ import ThreadManager from "./ThreadManager";
 // import { mockBranchesData } from "./data";
 
 export default function BranchingChatTree() {
-  const { currentUserData } = useData();
-  const branchesData = currentUserData?.branches || {};
+  const {
+    currentUserData,
+    threadManager,
+    getActiveThread,
+    switchThread,
+    createThread,
+  } = useData();
+
+  const branchesData = useMemo(
+    () => currentUserData?.branches || {},
+    [currentUserData?.branches]
+  );
   const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
@@ -28,6 +38,28 @@ export default function BranchingChatTree() {
   // Min and max heights for the tree view
   const MIN_HEIGHT = 150;
   const MAX_HEIGHT_RATIO = 0.8; // 80% of window height
+
+  const activeThread = getActiveThread();
+
+  // Sync active branch with active thread
+  useEffect(() => {
+    if (activeThread && activeThread.branchId !== activeBranch) {
+      setActiveBranch(activeThread.branchId);
+    }
+  }, [activeThread, activeBranch]);
+
+  // Initialize with a thread if none exists
+  useEffect(() => {
+    if (
+      threadManager.threadOrder.length === 0 &&
+      Object.keys(branchesData).length > 0
+    ) {
+      // Create threads from all existing branches
+      Object.keys(branchesData).forEach((branchId) => {
+        createThread(branchId);
+      });
+    }
+  }, [threadManager.threadOrder.length, branchesData, createThread]);
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -108,31 +140,57 @@ export default function BranchingChatTree() {
     document.addEventListener("touchend", handleTouchEnd);
   };
 
+  // Enhanced branch switching that also updates thread context
+  const handleBranchSwitch = (branchId: string) => {
+    setActiveBranch(branchId);
+
+    // Find or create a thread for this branch
+    const existingThread = Object.values(threadManager.threads).find(
+      (thread) => thread.branchId === branchId
+    );
+
+    if (existingThread) {
+      switchThread(existingThread.threadId);
+    } else {
+      // Create a new thread for this branch
+      createThread(branchId);
+    }
+  };
+
   // Get the full message history for a branch (including all ancestor messages)
   const getBranchMessages = (branchId: string): Message[] => {
     const branchPath = getBranchPath(branchId);
-    let messages: Message[] = [];
+    let allMessages: Message[] = [];
 
+    // Build the complete message history by traversing the branch path
     for (let i = 0; i < branchPath.length; i++) {
-      const { branchId, parentMessageId } = branchPath[i];
-      const branch = branchesData[branchId];
+      const { branchId: currentBranchId, parentMessageId } = branchPath[i];
+      const branch = branchesData[currentBranchId];
+
+      if (!branch) continue;
 
       if (i === 0) {
-        messages = [...branch.messages];
+        // Root branch - add all its messages
+        allMessages = [...branch.messages];
       } else {
-        const forkIndex = messages.findIndex(
+        // Child branch - inherit messages up to the fork point, then add branch-specific messages
+        const forkIndex = allMessages.findIndex(
           (msg) => msg.id === parentMessageId
         );
 
         if (forkIndex >= 0) {
-          messages = [...messages.slice(0, forkIndex + 1), ...branch.messages];
+          // Keep messages up to and including the fork point, then add branch messages
+          const inheritedMessages = allMessages.slice(0, forkIndex + 1);
+          const branchMessages = branch.messages;
+          allMessages = [...inheritedMessages, ...branchMessages];
         } else {
-          messages = [...messages, ...branch.messages];
+          // If fork point not found, just append branch messages
+          allMessages = [...allMessages, ...branch.messages];
         }
       }
     }
 
-    return messages;
+    return allMessages;
   };
 
   // Helper function to get the branch path from root to current branch
@@ -183,7 +241,7 @@ export default function BranchingChatTree() {
       >
         <BranchTreeVisualization
           activeBranch={activeBranch}
-          setActiveBranch={setActiveBranch}
+          setActiveBranch={handleBranchSwitch}
           hoveredBranch={hoveredBranch}
           setHoveredBranch={setHoveredBranch}
           expandedTreeView={true} // Always expanded since we have manual resize
@@ -224,11 +282,11 @@ export default function BranchingChatTree() {
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           activeBranch={activeBranch}
-          setActiveBranch={setActiveBranch}
+          setActiveBranch={handleBranchSwitch}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           filteredBranches={filteredBranches}
-          mockBranchesData={branchesData}
+          branchesData={branchesData}
           treeViewHeight={treeViewHeight}
           onThreadManagerToggle={() => setThreadManagerOpen(!threadManagerOpen)}
         />
@@ -236,7 +294,7 @@ export default function BranchingChatTree() {
         <ConversationView
           activeBranch={activeBranch}
           getBranchMessages={getBranchMessages}
-          mockBranchesData={branchesData}
+          branchesData={branchesData}
         />
       </div>
 

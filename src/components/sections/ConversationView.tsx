@@ -11,22 +11,33 @@ import TypingIndicator from "../conversation-view/TypingIndicator";
 interface ConversationViewProps {
   activeBranch: string;
   getBranchMessages: (branchId: string) => Message[];
-  mockBranchesData: Record<string, BranchWithMessages>;
+  branchesData: Record<string, BranchWithMessages>;
 }
 
 export default function ConversationView({
   activeBranch,
   getBranchMessages,
-  mockBranchesData,
+  branchesData,
 }: ConversationViewProps) {
-  const { setCurrentUserData, getActiveThread, updateThreadMetadata } =
-    useData();
+  const { setCurrentUserData, getActiveThread, addMessageToThread } = useData();
+
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const activeThread = getActiveThread();
-  const allMessages = getBranchMessages(activeBranch);
+
+  // Get messages from the active thread if available, otherwise from branch
+  const getMessages = (): Message[] => {
+    if (activeThread && activeThread.messages.length > 0) {
+      return activeThread.messages;
+    }
+    // Fallback to branch messages if no thread messages
+    const branchMessages = getBranchMessages(activeBranch);
+    return branchMessages;
+  };
+
+  const allMessages = getMessages();
 
   // Format timestamp to readable string
   const formatTime = (timestamp: string) => {
@@ -38,8 +49,8 @@ export default function ConversationView({
 
   // Determine which branch a message belongs to directly (not via inheritance)
   const getMessageBranchId = (messageId: string): string | null => {
-    for (const branchId in mockBranchesData) {
-      const branch = mockBranchesData[branchId];
+    for (const branchId in branchesData) {
+      const branch = branchesData[branchId];
       if (branch.messages.some((msg) => msg.id === messageId)) {
         return branchId;
       }
@@ -49,22 +60,23 @@ export default function ConversationView({
 
   // Check if a message is from the currently active branch (directly, not inherited)
   const isMessageFromActiveBranch = (messageId: string): boolean => {
-    return mockBranchesData[activeBranch].messages.some(
-      (msg) => msg.id === messageId
+    return (
+      branchesData[activeBranch]?.messages.some(
+        (msg) => msg.id === messageId
+      ) || false
     );
   };
 
   // Find the branch that a message belongs to
   const getMessageBranch = (messageId: string): BranchWithMessages | null => {
     const branchId = getMessageBranchId(messageId);
-    return branchId ? mockBranchesData[branchId] : null;
+    return branchId ? branchesData[branchId] : null;
   };
 
   // Auto scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getBranchMessages(activeBranch)]);
+  }, [allMessages]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -80,13 +92,7 @@ export default function ConversationView({
     };
 
     // Add user message to thread
-    const updatedMessages = [...activeThread.messages, userMessage];
-
-    // Update thread with new message
-    updateThreadMetadata(activeThread.threadId, {
-      messageCount: updatedMessages.length,
-      updatedAt: new Date().toISOString(),
-    });
+    addMessageToThread(activeThread.threadId, userMessage);
 
     // Update user data for branch compatibility
     setCurrentUserData((prev) => {
@@ -135,13 +141,7 @@ export default function ConversationView({
     };
 
     // Add assistant message to thread
-    const finalMessages = [...updatedMessages, assistantMessageObj];
-
-    // Update thread with assistant message
-    updateThreadMetadata(activeThread.threadId, {
-      messageCount: finalMessages.length,
-      updatedAt: new Date().toISOString(),
-    });
+    addMessageToThread(activeThread.threadId, assistantMessageObj);
 
     // Add the assistant's reply to the branch
     setCurrentUserData((prev) => {
@@ -162,15 +162,23 @@ export default function ConversationView({
     setIsTyping(false);
   };
 
-  // const handleCreateBranch = (messageId: string) => {
-  //   // This would trigger branch creation from this message
-  //   console.log(`Creating branch from message: ${messageId}`);
-  // };
+  // Show thread info in header if available
+  const renderThreadInfo = () => {
+    if (activeThread) {
+      return (
+        <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+          • Thread: {activeThread.metadata.title}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
       {/* Branch header */}
-      <Header mockBranchesData={mockBranchesData} activeBranch={activeBranch} />
+      <Header branchesData={branchesData} activeBranch={activeBranch} />
+      {renderThreadInfo()}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950">
@@ -180,12 +188,12 @@ export default function ConversationView({
           const messageBranch = getMessageBranch(message.id);
 
           // Check if this message is a branch point
-          const hasBranches = Object.values(mockBranchesData).some(
+          const hasBranches = Object.values(branchesData).some(
             (branch) => branch.parentMessageId === message.id
           );
 
           // Find branches that fork from this message
-          const forkingBranches = Object.values(mockBranchesData).filter(
+          const forkingBranches = Object.values(branchesData).filter(
             (branch) => branch.parentMessageId === message.id
           );
 
@@ -205,7 +213,7 @@ export default function ConversationView({
                     prevMessageBranchId !== currentMessageBranchId
                   ) {
                     const currentBranch =
-                      mockBranchesData[currentMessageBranchId];
+                      branchesData[currentMessageBranchId];
 
                     return (
                       <div className="flex items-center justify-center py-4">
@@ -352,7 +360,7 @@ export default function ConversationView({
         message={message}
         setMessage={setMessage}
         handleSubmit={handleSubmit}
-        mockBranchesData={mockBranchesData}
+        branchesData={branchesData}
         activeBranch={activeBranch}
       />
     </div>
