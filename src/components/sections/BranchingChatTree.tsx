@@ -4,8 +4,8 @@ import { useData } from "@/hooks/useData";
 import { useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
+import BranchTreeFlow from "./BranchTreeFlow";
 import ConversationView from "./ConversationView";
-import BranchTreeVisualization from "./processBranchesForTreeView";
 
 export default function BranchingChatTree() {
   const { currentUserData, branchesData } = useData();
@@ -247,15 +247,12 @@ export default function BranchingChatTree() {
             minHeight: `${MIN_HEIGHT}px`,
           }}
         >
-          <BranchTreeVisualization
+          {/* Switchable: ReactFlow-based layout to avoid overlaps */}
+          <BranchTreeFlow
+            branchesData={branchesData}
             activeBranch={activeBranch}
             setActiveBranch={handleBranchSwitch}
-            hoveredBranch={hoveredBranch}
-            setHoveredBranch={setHoveredBranch}
-            expandedTreeView={true} // Always expanded since we have manual resize
-            setExpandedTreeView={() => {}} // No-op since we handle resize manually
-            treeViewHeight={treeViewHeight}
-            branchesData={branchesData}
+            height={treeViewHeight - 0}
           />
 
           {/* Resize Handle */}
