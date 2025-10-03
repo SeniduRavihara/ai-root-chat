@@ -30,15 +30,17 @@ export default function BranchingChatTree() {
   const MIN_HEIGHT = 150;
   const MAX_HEIGHT_RATIO = 0.8; // 80% of window height
 
-  // Initialize with main branch if it exists
+  // Initialize with main branch or last saved branch if exists
   useEffect(() => {
-    // if (Object.keys(branchesData).length > 0  && !branchesData[activeBranch]) {
-    //   console.log("HIIIIIIIIIII");
-    // }
+    try {
+      const saved = localStorage.getItem("activeBranchId");
+      if (saved) {
+        setActiveBranch(saved);
+      }
+    } catch {}
 
     if (Object.keys(branchesData).length > 0 && !branchesData[activeBranch]) {
       setActiveBranch(Object.keys(branchesData)[0]);
-      console.log("HIIIIIIIIIII");
     }
   }, [branchesData, activeBranch]);
 
@@ -135,6 +137,9 @@ export default function BranchingChatTree() {
   // Enhanced branch switching
   const handleBranchSwitch = (branchId: string) => {
     setActiveBranch(branchId);
+    try {
+      localStorage.setItem("activeBranchId", branchId);
+    } catch {}
   };
 
   // Get the full message history for a branch (including all ancestor messages)

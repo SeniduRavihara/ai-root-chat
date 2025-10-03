@@ -50,6 +50,7 @@ export default function BranchExplorer({
     allChats,
     makeChatActive,
     activeChatId,
+    isChatsLoading,
   } = useData();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -153,7 +154,27 @@ export default function BranchExplorer({
 
         {/* Chats List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {allChats && allChats.length > 0 ? (
+          {isChatsLoading ? (
+            <div className="space-y-2" aria-busy="true" aria-live="polite">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur animate-pulse"
+                >
+                  <div className="flex items-center">
+                    <div className="w-1.5 h-10 rounded-full mr-3 bg-gray-200 dark:bg-gray-800" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-800" />
+                        <div className="ml-3 w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-800" />
+                      </div>
+                      <div className="mt-2 h-3 w-48 rounded bg-gray-200 dark:bg-gray-800" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : allChats && allChats.length > 0 ? (
             allChats.map((chat) => {
               const messages = Array.isArray(chat.messages)
                 ? chat.messages

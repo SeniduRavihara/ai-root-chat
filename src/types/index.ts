@@ -11,6 +11,7 @@ export type DataContextType = {
   makeChatActive: (id: string) => void;
   allChats: Chat[] | null;
   activeChatId?: string | null;
+  isChatsLoading?: boolean;
 };
 
 export type AuthContextType = {

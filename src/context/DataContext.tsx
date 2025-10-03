@@ -17,6 +17,7 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [allChats, setAllChats] = useState<Chat[]>([]);
   const [activeBranch, setActiveBranch] = useState<string | null>(null);
+  const [isChatsLoading, setIsChatsLoading] = useState<boolean>(true);
 
   const [currentUserData, setCurrentUserData] = useState<UserDataType | null>(
     null
@@ -37,21 +38,29 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
       "chats"
     );
 
-    const unsubscribe = onSnapshot(chatsCollectionRef, (QuerySnapshot) => {
-      const chatsArr = QuerySnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-      })) as Array<Chat>;
-
-      console.log(chatsArr);
-
-      setAllChats(chatsArr);
-    });
+    const unsubscribe = onSnapshot(
+      chatsCollectionRef,
+      (QuerySnapshot) => {
+        const chatsArr = QuerySnapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as Array<Chat>;
+        setAllChats(chatsArr);
+        setIsChatsLoading(false);
+      },
+      () => setIsChatsLoading(false)
+    );
 
     return unsubscribe;
   }, [currentUserData, setCurrentUserData]);
 
-  useEffect(() => {}, []);
+  // Load last active chat from localStorage
+  useEffect(() => {
+    try {
+      const savedChatId = localStorage.getItem("activeChatId");
+      if (savedChatId) setActiveChatId(savedChatId);
+    } catch {}
+  }, []);
 
   // Subscribe to branches of the active chat
   useEffect(() => {
@@ -79,7 +88,6 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
         });
         setBranchesData(map);
         console.log(map);
-        
       },
       (error) => {
         console.error("Error subscribing to branches:", error);
@@ -93,6 +101,9 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("Active Chat ID", id);
 
     setActiveChatId(id);
+    try {
+      localStorage.setItem("activeChatId", id);
+    } catch {}
   };
 
   // Initialize with mock data if no user data exists
@@ -129,6 +140,7 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
         makeChatActive,
         allChats,
         activeChatId,
+        isChatsLoading,
       }}
     >
       {children}
