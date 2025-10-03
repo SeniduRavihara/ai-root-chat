@@ -1,14 +1,13 @@
+import { addMockData } from "@/firebase/api";
 import { logout } from "@/firebase/services/AuthService";
+import { createNewChat } from "@/firebase/services/ChatService";
 import { useAuth } from "@/hooks/useAuth";
 import { useData } from "@/hooks/useData";
-import { createNewChat } from "@/firebase/services/ChatService";
 import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  GitBranch,
   LogOut,
-  MessageSquare,
   Plus,
   Search,
   User,
@@ -45,135 +44,18 @@ export default function BranchExplorer({
   branchesData,
 }: BranchExplorerProps) {
   const { currentUser } = useAuth();
-  const { currentUserData, setCurrentUserData } = useData();
-  // State to track which branches are expanded in the tree view
-  const [expandedBranches, setExpandedBranches] = useState<
-    Record<string, boolean>
-  >({});
+  const {
+    currentUserData,
+    setCurrentUserData,
+    allChats,
+    makeChatActive,
+    activeChatId,
+  } = useData();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatName, setNewChatName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
-
-  // Function to toggle branch expansion
-  const toggleBranchExpansion = (branchId: string) => {
-    setExpandedBranches((prev) => ({
-      ...prev,
-      [branchId]: !prev[branchId],
-    }));
-  };
-
-  // Function to organize branches into a tree structure
-  const buildBranchTree = () => {
-    const tree: Record<string, BranchWithMessages> = {};
-    const branchesWithChildren: Record<string, BranchWithMessages> = {};
-
-    // Initialize all branches with empty children array
-    filteredBranches.forEach((branch) => {
-      branchesWithChildren[branch.id] = {
-        ...branch,
-        children: [],
-      };
-    });
-
-    // Populate children arrays
-    filteredBranches.forEach((branch) => {
-      if (branch.parentId && branchesWithChildren[branch.parentId]) {
-        branchesWithChildren[branch.parentId].children!.push(
-          branchesWithChildren[branch.id]
-        );
-      }
-    });
-
-    // Get root level branches (those without parents or with non-existent parents)
-    filteredBranches.forEach((branch) => {
-      if (!branch.parentId || !branchesWithChildren[branch.parentId]) {
-        tree[branch.id] = branchesWithChildren[branch.id];
-      }
-    });
-
-    return { tree, branchesWithChildren };
-  };
-
-  const { tree: branchTree } = buildBranchTree();
-
-  // Recursive function to render branch nodes with their children
-  const renderBranchNode = (branch: BranchWithMessages) => {
-    if (!branch) return null;
-    const isActive = branch.id === activeBranch;
-    const isExpanded = expandedBranches[branch.id];
-
-    return (
-      <div key={branch.id} className="mt-1">
-        <div
-          className={`flex items-center p-2 rounded-lg cursor-pointer ${
-            isActive
-              ? "bg-blue-50 dark:bg-blue-900/20"
-              : "hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
-          {branch.children && branch.children.length > 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleBranchExpansion(branch.id);
-              }}
-              className="mr-1 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-            >
-              {isExpanded ? (
-                <ChevronDown size={16} />
-              ) : (
-                <ChevronRight size={16} />
-              )}
-            </button>
-          )}
-          <div
-            className={`flex items-center flex-grow py-2 px-3 rounded-xl cursor-pointer transition-all ${
-              isActive
-                ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
-            }`}
-            onClick={() => setActiveBranch(branch.id)}
-          >
-            <div
-              className="w-1.5 h-12 rounded-full mr-3"
-              style={{ backgroundColor: branch.color }}
-            ></div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">{branch.name}</h4>
-                <div
-                  className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium"
-                  style={{
-                    backgroundColor: `${branch.color}20`,
-                    color: branch.color,
-                  }}
-                >
-                  {branch.messages.length}
-                </div>
-              </div>
-              <div className="flex items-center mt-1 text-xs text-gray-500">
-                <MessageSquare size={12} className="mr-1" />
-                <span>{branch.messages.length} messages</span>
-                {branch.parentId && (
-                  <span className="ml-3 flex items-center">
-                    <GitBranch size={12} className="mr-1" />
-                    from {branchesData[branch.parentId]?.name || "Parent"}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        {isExpanded && branch.children && branch.children.length > 0 && (
-          <div className="border-l-2 border-dashed border-gray-300 dark:border-gray-700 pl-4 ml-4">
-            {branch.children.map((child) => renderBranchNode(child))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const openNewChatModal = () => {
     setNewChatName("");
@@ -190,20 +72,8 @@ export default function BranchExplorer({
       if (!currentUser) return;
       setIsCreating(true);
       const name = newChatName.trim() || "New Chat";
-      const newBranch = await createNewChat(currentUser.uid, name);
-
-      setCurrentUserData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          branches: {
-            ...prev.branches,
-            [newBranch.id]: newBranch,
-          },
-        };
-      });
-
-      setActiveBranch(newBranch.id);
+      const newChat = await createNewChat(currentUser.uid, name);
+      makeChatActive(newChat.id);
       setIsNewChatModalOpen(false);
     } catch (error) {
       console.error("Failed to create new chat:", error);
@@ -218,6 +88,18 @@ export default function BranchExplorer({
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
+    }
+  };
+
+  const handleSeedSampleData = async () => {
+    try {
+      if (!currentUser) return;
+      await addMockData(
+        currentUser.uid,
+        "1b84670a-856c-4a14-8c4e-6f2a2bb5f426"
+      );
+    } catch (error) {
+      console.error("Seeding sample data failed:", error);
     }
   };
 
@@ -269,9 +151,66 @@ export default function BranchExplorer({
           </div>
         </div>
 
-        {/* Branches List with Tree Structure */}
+        {/* Chats List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {Object.values(branchTree).map((branch) => renderBranchNode(branch))}
+          {allChats && allChats.length > 0 ? (
+            allChats.map((chat) => {
+              const messages = Array.isArray(chat.messages)
+                ? chat.messages
+                : [];
+              const count = messages.length;
+              const lastMsg = count > 0 ? messages[count - 1] : undefined;
+
+              const preview =
+                lastMsg && typeof lastMsg.content === "string"
+                  ? `${lastMsg.content.slice(0, 80)}${
+                      lastMsg.content.length > 80 ? "…" : ""
+                    }`
+                  : "";
+
+              return (
+                <button
+                  key={chat.id}
+                  onClick={() => makeChatActive(chat.id)}
+                  className={`w-full text-left p-3 rounded-xl border transition-all
+            ${
+              activeChatId === chat.id
+                ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                : "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 border-gray-200 dark:border-gray-800"
+            }`}
+                >
+                  <div className="flex items-center">
+                    <div
+                      className="w-1.5 h-10 rounded-full mr-3"
+                      style={{ backgroundColor: chat.color }}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium truncate">{chat.name}</h4>
+                        <div
+                          className="ml-3 flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold"
+                          style={{
+                            backgroundColor: `${chat.color}20`,
+                            color: chat.color,
+                          }}
+                          title={`${count} messages`}
+                        >
+                          {count}
+                        </div>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+                        {preview || "No messages yet"}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-3 py-6 text-sm text-gray-500 dark:text-gray-400">
+              No chats yet. Create one to get started.
+            </div>
+          )}
         </div>
 
         {/* Actions Footer */}
@@ -322,7 +261,13 @@ export default function BranchExplorer({
                   </div>
                 </div>
               </div>
-              <div className="p-2">
+              <div className="p-2 space-y-1">
+                <button
+                  onClick={handleSeedSampleData}
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
+                >
+                  Seed sample data
+                </button>
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"

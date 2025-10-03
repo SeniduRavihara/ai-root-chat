@@ -10,27 +10,6 @@ import { createContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext<AuthContextType>(INITIAL_AUTH_CONTEXT);
 
-// export const deepEqual = (obj1: any, obj2: any): boolean => {
-//   if (obj1 === obj2) return true;
-
-//   if (obj1 == null || obj2 == null) return false;
-
-//   if (typeof obj1 !== typeof obj2) return false;
-
-//   if (typeof obj1 !== "object") return obj1 === obj2;
-
-//   const keys1 = Object.keys(obj1);
-//   const keys2 = Object.keys(obj2);
-
-//   if (keys1.length !== keys2.length) return false;
-
-//   for (let key of keys1) {
-//     if (!keys2.includes(key)) return false;
-//     if (!deepEqual(obj1[key], obj2[key])) return false;
-//   }
-
-//   return true;
-// };
 
 const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { setCurrentUserData } = useData();
@@ -47,12 +26,14 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const userData = (await featchCurrentUserData(user)) as UserDataType;
-      const userBranchData = await fetchUserBranchData(user.uid);
+      // const userBranchData = await fetchUserBranchData(user.uid);
 
-      setCurrentUserData({
-        ...userData,
-        branches: userBranchData as Record<string, BranchWithMessages>,
-      });
+      // setCurrentUserData({
+      //   ...userData,
+      //   branches: userBranchData as Record<string, BranchWithMessages>,
+      // });
+
+      setCurrentUserData(userData);
 
       setCurrentUser(user);
 

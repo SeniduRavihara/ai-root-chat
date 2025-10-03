@@ -57,7 +57,7 @@ const processBranchesForTreeView = (
       id: branch.id,
       name: branch.name,
       color: branch.color,
-      messageCount: branch.messages.length,
+      messageCount: Array.isArray(branch.messages) ? branch.messages.length : 0,
       children: [],
       depth: 0, // Will be calculated in second pass
       parentId: branch.parentId,

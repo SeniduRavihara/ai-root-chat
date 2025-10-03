@@ -57,8 +57,8 @@ export const fetchUserBranchData = async (
   }
 };
 
-export const addMockData = async (userId: string) => {
-  const collectionRef = collection(db, "users", userId, "branches");
+export const addMockData = async (userId: string, chatId: string) => {
+  const collectionRef = collection(db, "users", userId, "chats", chatId,  "branches");
 
   try {
     // Convert the Record to an array of branch objects
@@ -78,26 +78,4 @@ export const addMockData = async (userId: string) => {
   }
 };
 
-export async function addMessageToBranch(
-  uid: string,
-  branchId: string,
-  message: any
-) {
-  const branchRef = doc(db, "users", uid, "branches", branchId);
-  await updateDoc(branchRef, {
-    messages: arrayUnion(message),
-  });
-}
 
-/**
- * Create a new branch for a user in Firestore
- * @param uid - user id
- * @param branchData - branch object (id, name, color, parentId, parentMessageId, messages)
- */
-export async function createBranchForUser(
-  uid: string,
-  branchData: BranchWithMessages
-) {
-  const branchRef = doc(db, "users", uid, "branches", branchData.id);
-  await setDoc(branchRef, branchData);
-}

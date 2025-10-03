@@ -1,19 +1,19 @@
 "use client";
 
 import { useData } from "@/hooks/useData";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import ConversationView from "./ConversationView";
 import BranchTreeVisualization from "./processBranchesForTreeView";
 
 export default function BranchingChatTree() {
-  const { currentUserData } = useData();
+  const { currentUserData, branchesData } = useData();
 
-  const branchesData = useMemo(
-    () => currentUserData?.branches || {},
-    [currentUserData?.branches]
-  );
+  // const branchesData = useMemo(
+  //   () => currentUserData?.branches || {},
+  //   [currentUserData?.branches]
+  // );
   const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
@@ -32,8 +32,13 @@ export default function BranchingChatTree() {
 
   // Initialize with main branch if it exists
   useEffect(() => {
+    // if (Object.keys(branchesData).length > 0  && !branchesData[activeBranch]) {
+    //   console.log("HIIIIIIIIIII");
+    // }
+
     if (Object.keys(branchesData).length > 0 && !branchesData[activeBranch]) {
       setActiveBranch(Object.keys(branchesData)[0]);
+      console.log("HIIIIIIIIIII");
     }
   }, [branchesData, activeBranch]);
 
@@ -54,6 +59,15 @@ export default function BranchingChatTree() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [treeViewHeight]);
+
+  // Add/remove `no-select` class to body during resize
+  useEffect(() => {
+    if (isResizing) {
+      document.body.classList.add("no-select");
+    } else {
+      document.body.classList.remove("no-select");
+    }
+  }, [isResizing]);
 
   // Mouse down handler for starting resize
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -192,7 +206,9 @@ export default function BranchingChatTree() {
   const filteredBranches: BranchWithMessages[] = Object.values(
     branchesData
   ).filter((branch): branch is BranchWithMessages =>
-    branch.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (branch?.name ?? "")
+      .toLowerCase()
+      .includes((searchQuery ?? "").toLowerCase())
   );
 
   return (

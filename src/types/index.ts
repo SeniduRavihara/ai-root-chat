@@ -5,11 +5,12 @@ import React from "react";
 
 // Updated Data Context Types
 export type DataContextType = {
-  currentUserData: UserWithMessages | null;
-  setCurrentUserData: React.Dispatch<
-    React.SetStateAction<UserWithMessages | null>
-  >;
+  currentUserData: UserDataType | null;
+  setCurrentUserData: React.Dispatch<React.SetStateAction<UserDataType | null>>;
   branchesData: Record<string, BranchWithMessages>;
+  makeChatActive: (id: string) => void;
+  allChats: Chat[] | null;
+  activeChatId?: string | null;
 };
 
 export type AuthContextType = {
@@ -77,3 +78,10 @@ export interface BranchWithMessages extends Branch {
   // color: string;color: string;color: string;color: string;color: string;color: string;color: string;color: string;
   messages: Message[];
 }
+
+export type Chat = {
+  id: string;
+  name: string;
+  color: string;
+  messages: Message[];
+};

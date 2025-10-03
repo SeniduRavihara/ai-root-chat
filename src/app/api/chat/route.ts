@@ -36,25 +36,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // Add a system message to instruct the model to avoid markdown and keep responses simple
     const systemMessage = {
       role: "user",
       parts: [
         {
           text:
-            "You are an assistant. Please keep your responses simple and do not use markdown formatting. Only return plain text answers.",
+            "You are an assistant. give the result with markdown styles to impress and equations in math answers",
         },
       ],
     };
 
-    // Only add the system message if it's not already present in the history
     let fullHistory = [];
     if (
       !history.length ||
       !(
         history[0]?.parts &&
         history[0].parts[0]?.text &&
-        history[0].parts[0].text.includes("do not use markdown")
+        history[0].parts[0].text.includes(" give the result with markdown styles to impress and equations in math answers")
       )
     ) {
       fullHistory = [systemMessage, ...history];
@@ -74,11 +72,7 @@ export async function POST(req: Request) {
       contents: fullHistory,
     });
 
-    // Prefer plain text, fallback if not present
-    let answer = result.text || "No response generated.";
-
-    // Remove markdown formatting if any sneaks through (basic strip)
-    answer = answer.replace(/[`*_#>\[\]\(\)]/g, "");
+    const answer = result.text || "No response generated.";
 
     fullHistory.push({
       role: "model",
@@ -95,10 +89,19 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
       }
     );
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid request body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+  } catch (error) {
+    // LOG THE ACTUAL ERROR
+    console.error("API Error:", error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: "Invalid request body",
+        details: error instanceof Error ? error.message : String(error)
+      }), 
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }

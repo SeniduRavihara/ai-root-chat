@@ -86,11 +86,7 @@ export const googleSignIn = async () => {
       const payload = {
         uid: user.uid,
         userName: user.displayName || "",
-        regNo: null,
         email: user.email || "",
-        roles: "STUDENT",
-        registered: false,
-        lastResult: null,
       };
 
       await setDoc(userDocRef, payload);

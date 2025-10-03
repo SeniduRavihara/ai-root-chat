@@ -1,6 +1,13 @@
 import { db } from "@/firebase/firebase_config";
-import { BranchWithMessages } from "@/types";
-import { arrayUnion,updateDoc, doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { BranchWithMessages, Chat } from "@/types";
+import {
+  arrayUnion,
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
 
 function getRandomColor(): string {
@@ -17,39 +24,71 @@ function getRandomColor(): string {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-export async function createNewChat(
-    uid: string,
-    name?: string
-  ): Promise<BranchWithMessages> {
-    const branchId = uuidv4();
-    const newChat: BranchWithMessages = {
-      id: branchId,
-      name: name && name.trim() ? name.trim() : "New Chat",
-      color: getRandomColor(),
-      parentId: null,
-      parentMessageId: null,
-      messages: [],
-    };
-  
-    const branchRef = doc(db, "users", uid, "chats", branchId);
-    await setDoc(branchRef, newChat);
-  
-    return newChat;
-  }
+export async function createNewChat(uid: string, name?: string) {
+  const id = uuidv4();
+  const newChat: Chat = {
+    id,
+    name: name && name.trim() ? name.trim() : "New Chat",
+    color: getRandomColor(),
+    messages: [],
+  };
 
-export async function addMessageToChat(
+  const chatRef = doc(db, "users", uid, "chats", id);
+  await setDoc(chatRef, newChat);
+
+  const branchRef = doc(db, "users", uid, "chats", id, "branches", "main");
+
+  await setDoc(branchRef, {
+    id: "main",
+    name: "Main Branch",
+    parentId: null,
+    parentMessageId: null,
+    color: "#6366f1", // indigo
+    messages: [],
+  });
+
+  return newChat;
+}
+
+export async function addMessageToBranch(
   uid: string,
-  chatId: string,
-  message: any
+  branchId: string,
+  message: any,
+  activeChatId: string
 ) {
-  const chatRef = doc(db, "users", uid, "chats", chatId);
-  await updateDoc(chatRef, {
+  const branchRef = doc(
+    db,
+    "users",
+    uid,
+    "chats",
+    activeChatId,
+    "branches",
+    branchId
+  );
+  await updateDoc(branchRef, {
     messages: arrayUnion(message),
   });
 }
 
 export const getChats = async (uid: string) => {
+  console.log("UID", uid);
+
   const chatsRef = collection(db, "users", uid, "chats");
   const chats = await getDocs(chatsRef);
   return chats.docs.map((doc) => doc.data());
+};
+
+
+/**
+ * Create a new branch for a user in Firestore
+ * @param uid - user id
+ * @param branchData - branch object (id, name, color, parentId, parentMessageId, messages)
+ */
+export async function createBranchForUser(
+  uid: string,
+  chatId: string,
+  branchData: BranchWithMessages
+) {
+  const branchRef = doc(db, "users", uid, "chats", chatId, "branches", branchData.id);
+  await setDoc(branchRef, branchData);
 }

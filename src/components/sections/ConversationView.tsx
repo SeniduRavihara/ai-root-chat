@@ -1,6 +1,5 @@
 "use client";
 
-import { addMessageToBranch, createBranchForUser } from "@/firebase/api";
 import { useData } from "@/hooks/useData";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +8,13 @@ import { BranchWithMessages, Message } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
+// Markdown and math imports
+import { addMessageToBranch, createBranchForUser } from "@/firebase/services/ChatService";
+import "katex/dist/katex.min.css";
+import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 
 interface ConversationViewProps {
   activeBranch: string;
@@ -19,9 +25,9 @@ interface ConversationViewProps {
 export default function ConversationView({
   activeBranch,
   getBranchMessages,
-  branchesData,
 }: ConversationViewProps) {
-  const { setCurrentUserData, currentUserData } = useData();
+  const { setBranchesData, branchesData, currentUserData, activeChatId } =
+    useData();
 
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -95,7 +101,8 @@ export default function ConversationView({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!message.trim() || !currentUserData) return;
+    if (!message.trim() || !branchesData || !currentUserData || !activeChatId)
+      return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -106,23 +113,35 @@ export default function ConversationView({
     };
 
     // Update user data for branch compatibility
-    setCurrentUserData((prev) => {
-      if (!prev) return prev;
-      const updatedBranches = {
-        ...prev.branches,
+    setBranchesData((prev) => {
+      const existingBranch = prev?.[activeBranch] ?? {
+        id: activeBranch,
+        name: activeBranch === "main" ? "Main Branch" : activeBranch,
+        parentId: null,
+        parentMessageId: null,
+        color: "#6366f1",
+        messages: [],
+      };
+
+      return {
+        ...prev,
         [activeBranch]: {
-          ...prev.branches[activeBranch],
-          messages: [...prev.branches[activeBranch].messages, userMessage],
+          ...existingBranch,
+          messages: [...(existingBranch.messages ?? []), userMessage],
         },
       };
-      return { ...prev, branches: updatedBranches };
     });
 
-    await addMessageToBranch(currentUserData?.uid, activeBranch, userMessage);
+    await addMessageToBranch(
+      currentUserData?.uid,
+      activeBranch,
+      userMessage,
+      activeChatId
+    );
 
     setMessage("");
     setIsTyping(true);
-    setShouldScrollToBottom(true);
+    // setShouldScrollToBottom(true);
 
     // Send to API and get the assistant's reply
     const response = await fetch("/api/chat", {
@@ -153,30 +172,35 @@ export default function ConversationView({
       branchId: activeBranch,
     };
 
-    // Add the assistant's reply to the branch
-    setCurrentUserData((prev) => {
-      if (!prev) return prev;
-      const updatedBranches = {
-        ...prev.branches,
+    // // Add the assistant's reply to the branch
+    setBranchesData((prev) => {
+      const existingBranch = prev?.[activeBranch] ?? {
+        id: activeBranch,
+        name: activeBranch === "main" ? "Main Branch" : activeBranch,
+        parentId: null,
+        parentMessageId: null,
+        color: "#6366f1",
+        messages: [],
+      };
+
+      return {
+        ...prev,
         [activeBranch]: {
-          ...prev.branches[activeBranch],
-          messages: [
-            ...prev.branches[activeBranch].messages,
-            assistantMessageObj,
-          ],
+          ...existingBranch,
+          messages: [...(existingBranch.messages ?? []), assistantMessageObj],
         },
       };
-      return { ...prev, branches: updatedBranches };
     });
 
     await addMessageToBranch(
       currentUserData.uid,
       activeBranch,
-      assistantMessageObj
+      assistantMessageObj,
+      activeChatId
     );
 
     setIsTyping(false);
-    setShouldScrollToBottom(true);
+    // setShouldScrollToBottom(true);
   };
 
   // Branch creation handler
@@ -184,7 +208,7 @@ export default function ConversationView({
     parentBranchId: string,
     parentMessageId: string
   ) => {
-    if (!currentUserData) return;
+    if (!currentUserData || !activeChatId) return;
     const branchName = prompt("Enter a name for the new branch:");
     if (!branchName) return;
     const newBranchId = uuidv4();
@@ -198,9 +222,9 @@ export default function ConversationView({
       messages: [], // Only new messages for this branch
     };
     // Add to Firestore
-    await createBranchForUser(currentUserData.uid, newBranch);
+    await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
     // Add to local state
-    setCurrentUserData((prev) => {
+    setBranchesData((prev: Record<string, BranchWithMessages>) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -355,7 +379,19 @@ export default function ConversationView({
                     )}
                   </div>
 
-                  <div className="mt-1 text-base">{message.content}</div>
+                  <div className="mt-1 text-base">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={
+                        {
+                          // Optionally, style code blocks, tables, etc. here
+                        }
+                      }
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
 
