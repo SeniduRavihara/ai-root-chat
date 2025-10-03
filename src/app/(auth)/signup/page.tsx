@@ -1,6 +1,6 @@
 "use client";
 
-import { googleSignIn, signup } from "@/firebase/api";
+import { googleSignIn, signup } from "@/firebase/services/AuthService";
 import { Bot, Github, Mail, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

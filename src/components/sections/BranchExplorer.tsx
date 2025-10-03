@@ -1,5 +1,7 @@
-import { logout } from "@/firebase/api";
+import { logout } from "@/firebase/services/AuthService";
 import { useAuth } from "@/hooks/useAuth";
+import { useData } from "@/hooks/useData";
+import { createNewChat } from "@/firebase/services/ChatService";
 import {
   ChevronDown,
   ChevronLeft,
@@ -43,11 +45,15 @@ export default function BranchExplorer({
   branchesData,
 }: BranchExplorerProps) {
   const { currentUser } = useAuth();
+  const { currentUserData, setCurrentUserData } = useData();
   // State to track which branches are expanded in the tree view
   const [expandedBranches, setExpandedBranches] = useState<
     Record<string, boolean>
   >({});
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [newChatName, setNewChatName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
 
   // Function to toggle branch expansion
@@ -169,7 +175,42 @@ export default function BranchExplorer({
     );
   };
 
-  const createNewChat = async () => {};
+  const openNewChatModal = () => {
+    setNewChatName("");
+    setIsNewChatModalOpen(true);
+  };
+
+  const closeNewChatModal = () => {
+    if (isCreating) return;
+    setIsNewChatModalOpen(false);
+  };
+
+  const handleCreateNewChat = async () => {
+    try {
+      if (!currentUser) return;
+      setIsCreating(true);
+      const name = newChatName.trim() || "New Chat";
+      const newBranch = await createNewChat(currentUser.uid, name);
+
+      setCurrentUserData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          branches: {
+            ...prev.branches,
+            [newBranch.id]: newBranch,
+          },
+        };
+      });
+
+      setActiveBranch(newBranch.id);
+      setIsNewChatModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create new chat:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -236,7 +277,7 @@ export default function BranchExplorer({
         {/* Actions Footer */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           <button
-            onClick={createNewChat}
+            onClick={openNewChatModal}
             className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium"
           >
             <Plus size={16} className="mr-2" /> New Chat
@@ -294,6 +335,51 @@ export default function BranchExplorer({
           )}
         </div>
       </div>
+
+      {isNewChatModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={closeNewChatModal}
+          />
+          <div className="relative w-full max-w-md mx-4 rounded-xl shadow-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+              <h4 className="text-lg font-semibold">Create New Chat</h4>
+            </div>
+            <div className="px-5 py-4">
+              <label className="text-sm text-gray-600 dark:text-gray-400">
+                Chat name
+              </label>
+              <input
+                type="text"
+                value={newChatName}
+                onChange={(e) => setNewChatName(e.target.value)}
+                placeholder="e.g., Market research, Math session"
+                className="mt-2 w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isCreating}
+              />
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-2">
+              <button
+                onClick={closeNewChatModal}
+                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                disabled={isCreating}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateNewChat}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  isCreating ? "bg-blue-400" : "bg-blue-500 hover:bg-blue-600"
+                }`}
+                disabled={isCreating}
+              >
+                {isCreating ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
