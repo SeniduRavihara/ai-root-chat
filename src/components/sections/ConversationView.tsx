@@ -9,7 +9,10 @@ import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
 // Markdown and math imports
-import { addMessageToBranch, createBranchForUser } from "@/firebase/services/ChatService";
+import {
+  addMessageToBranch,
+  createBranchForUser,
+} from "@/firebase/services/ChatService";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -33,6 +36,18 @@ export default function ConversationView({
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const isNearBottom = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return true;
+    const threshold = 120;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+  };
 
   // Get messages from the active branch
   const getMessages = (): Message[] => {
@@ -76,10 +91,15 @@ export default function ConversationView({
     return branchId ? branchesData[branchId] : null;
   };
 
-  // Auto scroll to bottom of messages
+  // Auto scroll when switching branches/chats
   useEffect(() => {
-    if (shouldScrollToBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom("auto");
+  }, [activeBranch]);
+
+  // Smooth scroll on new messages or when requested
+  useEffect(() => {
+    if (shouldScrollToBottom || isNearBottom()) {
+      scrollToBottom("smooth");
       setShouldScrollToBottom(false);
     }
   }, [allMessages, shouldScrollToBottom]);
@@ -141,7 +161,7 @@ export default function ConversationView({
 
     setMessage("");
     setIsTyping(true);
-    // setShouldScrollToBottom(true);
+    setShouldScrollToBottom(true);
 
     // Send to API and get the assistant's reply
     const response = await fetch("/api/chat", {
@@ -200,7 +220,7 @@ export default function ConversationView({
     );
 
     setIsTyping(false);
-    // setShouldScrollToBottom(true);
+    setShouldScrollToBottom(true);
   };
 
   // Branch creation handler
@@ -242,7 +262,10 @@ export default function ConversationView({
       <Header branchesData={branchesData} activeBranch={activeBranch} />
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-0">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-0"
+      >
         {allMessages.map((message, index) => {
           // Determine if this message is from the active branch or inherited
           const isFromCurrentBranch = isMessageFromActiveBranch(message.id);
