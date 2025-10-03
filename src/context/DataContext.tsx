@@ -9,7 +9,7 @@ import {
   UserDataType,
 } from "@/types";
 import { collection, onSnapshot } from "firebase/firestore";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useMemo, useRef, useState } from "react";
 
 export const DataContext = createContext<DataContextType>(INITIAL_DATA_CONTEXT);
 
@@ -22,9 +22,79 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentUserData, setCurrentUserData] = useState<UserDataType | null>(
     null
   );
-  const [branchesData, setBranchesData] = useState<
+  const [rawBranchesData, setRawBranchesData] = useState<
     Record<string, BranchWithMessages>
   >({});
+
+  // Use a ref to store the last stable version of branchesData
+  const stableBranchesDataRef = useRef<Record<string, BranchWithMessages>>({});
+
+  // Memoize branchesData with deep comparison
+  const branchesData = useMemo(() => {
+    const newKeys = Object.keys(rawBranchesData).sort();
+    const oldKeys = Object.keys(stableBranchesDataRef.current).sort();
+
+    // Quick check: if keys are different, definitely changed
+    if (newKeys.join(",") !== oldKeys.join(",")) {
+      stableBranchesDataRef.current = rawBranchesData;
+      return rawBranchesData;
+    }
+
+    // Deep comparison of branch data
+    let hasChanges = false;
+    for (const key of newKeys) {
+      const newBranch = rawBranchesData[key];
+      const oldBranch = stableBranchesDataRef.current[key];
+
+      if (!oldBranch) {
+        hasChanges = true;
+        break;
+      }
+
+      // Compare critical fields
+      if (
+        newBranch.name !== oldBranch.name ||
+        newBranch.parentId !== oldBranch.parentId ||
+        newBranch.parentMessageId !== oldBranch.parentMessageId ||
+        newBranch.color !== oldBranch.color
+      ) {
+        hasChanges = true;
+        break;
+      }
+
+      // Compare messages array length and content
+      const newMessages = newBranch.messages || [];
+      const oldMessages = oldBranch.messages || [];
+
+      if (newMessages.length !== oldMessages.length) {
+        hasChanges = true;
+        break;
+      }
+
+      // Compare each message
+      for (let i = 0; i < newMessages.length; i++) {
+        if (
+          newMessages[i].id !== oldMessages[i].id ||
+          newMessages[i].content !== oldMessages[i].content ||
+          newMessages[i].role !== oldMessages[i].role
+        ) {
+          hasChanges = true;
+          break;
+        }
+      }
+
+      if (hasChanges) break;
+    }
+
+    // Only update if there are actual changes
+    if (hasChanges) {
+      stableBranchesDataRef.current = rawBranchesData;
+      return rawBranchesData;
+    }
+
+    // Return the old reference if nothing changed
+    return stableBranchesDataRef.current;
+  }, [rawBranchesData]);
 
   const [currentChat, setCurrentChat] = useState();
 
@@ -65,7 +135,9 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
   // Subscribe to branches of the active chat
   useEffect(() => {
     if (!currentUserData?.uid || !activeChatId) {
-      setBranchesData({});
+      setRawBranchesData({});
+      // Also reset the stable ref
+      stableBranchesDataRef.current = {};
       return;
     }
 
@@ -86,8 +158,9 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
           const branch = docSnap.data() as BranchWithMessages;
           map[branch.id] = branch;
         });
-        setBranchesData(map);
-        console.log(map);
+
+        // Just set the new data - the useMemo will handle comparison
+        setRawBranchesData(map);
       },
       (error) => {
         console.error("Error subscribing to branches:", error);
@@ -106,45 +179,29 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
     } catch {}
   };
 
-  // Initialize with mock data if no user data exists
-  // useEffect(() => {
-  //   if (!currentUserData?.branches) {
-  //     // Migrate mock data to ensure compatibility
-  //     const migratedData = migrateFirebaseData(mockBranchesData);
-  //     setCurrentUserData({
-  //       uid: "mock-user",
-  //       userName: "Mock User",
-  //       email: "mock@example.com",
-  //       branches: migratedData,
-  //     });
-  //   }
-  // }, [currentUserData]);
-
-  // Memoized context value to prevent unnecessary re-renders
-  // const contextValue = useMemo(
-  //   () => ({
-  //     currentUserData,
-  //     setCurrentUserData,
-  //     branchesData: currentUserData?.branches || mockBranchesData,
-  //   }),
-  //   [currentUserData]
-  // );
+  // Memoize the entire context value
+  const contextValue = useMemo(
+    () => ({
+      currentUserData,
+      setCurrentUserData,
+      branchesData,
+      setBranchesData: setRawBranchesData,
+      makeChatActive,
+      allChats,
+      activeChatId,
+      isChatsLoading,
+    }),
+    [
+      currentUserData,
+      branchesData, // This is now stable
+      allChats,
+      activeChatId,
+      isChatsLoading,
+    ]
+  );
 
   return (
-    <DataContext.Provider
-      value={{
-        currentUserData,
-        setCurrentUserData,
-        branchesData,
-        setBranchesData,
-        makeChatActive,
-        allChats,
-        activeChatId,
-        isChatsLoading,
-      }}
-    >
-      {children}
-    </DataContext.Provider>
+    <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>
   );
 };
 

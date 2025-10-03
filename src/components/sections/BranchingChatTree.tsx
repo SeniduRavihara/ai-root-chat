@@ -10,10 +10,6 @@ import ConversationView from "./ConversationView";
 export default function BranchingChatTree() {
   const { currentUserData, branchesData } = useData();
 
-  // const branchesData = useMemo(
-  //   () => currentUserData?.branches || {},
-  //   [currentUserData?.branches]
-  // );
   const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
@@ -32,17 +28,44 @@ export default function BranchingChatTree() {
 
   // Initialize with main branch or last saved branch if exists
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("activeBranchId");
-      if (saved) {
-        setActiveBranch(saved);
-      }
-    } catch {}
-
-    if (Object.keys(branchesData).length > 0 && !branchesData[activeBranch]) {
-      setActiveBranch(Object.keys(branchesData)[0]);
+    // Only load from localStorage if we don't have an activeBranch set yet
+    if (!activeBranch) {
+      try {
+        const saved = localStorage.getItem("activeBranchId");
+        if (saved) {
+          setActiveBranch(saved);
+        }
+      } catch {}
     }
-  }, [branchesData, activeBranch]);
+
+    // If we have branches data but the current activeBranch doesn't exist in it,
+    // reset to the first available branch (usually "main")
+    if (
+      Object.keys(branchesData).length > 0 &&
+      activeBranch &&
+      !branchesData[activeBranch]
+    ) {
+      console.log(
+        `Active branch ${activeBranch} not found in current chat, switching to first available branch`
+      );
+      const firstBranchId = Object.keys(branchesData)[0];
+      setActiveBranch(firstBranchId);
+
+      // Save the new active branch to localStorage
+      try {
+        localStorage.setItem("activeBranchId", firstBranchId);
+      } catch {}
+    }
+  }, [branchesData]); // Remove activeBranch from dependencies to prevent infinite loop
+
+  // Save activeBranch to localStorage whenever it changes
+  useEffect(() => {
+    if (activeBranch) {
+      try {
+        localStorage.setItem("activeBranchId", activeBranch);
+      } catch {}
+    }
+  }, [activeBranch]);
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
