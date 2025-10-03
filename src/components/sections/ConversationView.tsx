@@ -133,7 +133,7 @@ export default function ConversationView({
     };
 
     // Update user data for branch compatibility
-    setBranchesData((prev) => {
+    setBranchesData((prev: Record<string, BranchWithMessages>) => {
       const existingBranch = prev?.[activeBranch] ?? {
         id: activeBranch,
         name: activeBranch === "main" ? "Main Branch" : activeBranch,
@@ -193,7 +193,7 @@ export default function ConversationView({
     };
 
     // // Add the assistant's reply to the branch
-    setBranchesData((prev) => {
+    setBranchesData((prev: Record<string, BranchWithMessages>) => {
       const existingBranch = prev?.[activeBranch] ?? {
         id: activeBranch,
         name: activeBranch === "main" ? "Main Branch" : activeBranch,

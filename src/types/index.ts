@@ -12,6 +12,7 @@ export type DataContextType = {
   allChats: Chat[] | null;
   activeChatId?: string | null;
   isChatsLoading?: boolean;
+  setBranchesData: React.Dispatch<React.SetStateAction<Record<string, BranchWithMessages>>>;
 };
 
 export type AuthContextType = {

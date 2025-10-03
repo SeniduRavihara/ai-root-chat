@@ -3,7 +3,8 @@ export const INITIAL_DATA_CONTEXT = {
   setCurrentUserData: () => {},
   branchesData: {},
   makeChatActive: () => {},
-  allChats: null
+  allChats: null,
+  setBranchesData: () => {},
 };
 
 export const INITIAL_AUTH_CONTEXT = {
