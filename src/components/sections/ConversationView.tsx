@@ -264,7 +264,7 @@ export default function ConversationView({
       {/* Messages area */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-0"
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-50 dark:bg-gray-950 min-h-0"
       >
         {allMessages.map((message, index) => {
           // Determine if this message is from the active branch or inherited
@@ -323,15 +323,15 @@ export default function ConversationView({
               <div
                 className={`flex ${
                   message.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                } mb-3`}
               >
                 <div
-                  className={`max-w-3/4 rounded-2xl p-5 ${
+                  className={`max-w-[85%] rounded-lg ${
                     message.role === "user"
-                      ? "bg-blue-500 text-white shadow-md"
+                      ? "bg-blue-500 text-white"
                       : !isFromCurrentBranch
-                      ? "bg-white dark:bg-gray-900 border-l-4 shadow-md"
-                      : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-md"
+                      ? "bg-white dark:bg-gray-900 border-l-2 shadow-sm"
+                      : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm"
                   }`}
                   style={
                     !isFromCurrentBranch && messageBranch
@@ -341,89 +341,94 @@ export default function ConversationView({
                       : {}
                   }
                 >
-                  <div className="flex items-center mb-2">
+                  <div className="flex items-center justify-between p-3 pb-2">
                     <div
-                      className={`p-1.5 rounded-full ${
+                      className={`w-6 h-6 rounded-full flex items-center justify-center ${
                         message.role === "user"
                           ? "bg-blue-600"
                           : "bg-gray-100 dark:bg-gray-800"
-                      } mr-2`}
+                      }`}
                     >
                       {message.role === "user" ? (
-                        <User
-                          size={16}
-                          className={
-                            message.role === "user"
-                              ? "text-white"
-                              : "text-gray-700 dark:text-gray-300"
-                          }
-                        />
+                        <User size={12} className="text-white" />
                       ) : (
                         <Bot
-                          size={16}
+                          size={12}
                           className="text-gray-700 dark:text-gray-300"
                         />
                       )}
                     </div>
                     <span
-                      className={`text-xs ${
+                      className={`ml-2 text-xs ${
                         message.role === "user"
                           ? "text-blue-100"
                           : "text-gray-500 dark:text-gray-400"
                       }`}
                     >
-                      {message.role === "user" ? "You" : "Assistant"} •{" "}
-                      {formatTime(message.timestamp)}
+                      {message.role === "user" ? "You" : "Assistant"}
                     </span>
                     {!isFromCurrentBranch && messageBranch && (
                       <span
-                        className="ml-2 text-xs px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300"
+                        className="ml-2 text-xs px-1.5 py-0.5 rounded-full text-gray-600 dark:text-gray-300"
                         style={{
                           backgroundColor: `${messageBranch.color}20`,
                           color: messageBranch.color,
                         }}
                       >
-                        From {messageBranch.name}
+                        {messageBranch.name}
                       </span>
                     )}
 
-                    {message.role === "assistant" && (
-                      <button
-                        className="ml-auto text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center"
-                        onClick={() =>
-                          handleCreateBranch(
-                            getMessageBranchId(message.id)!,
-                            message.id
-                          )
-                        }
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`text-xs ${
+                          message.role === "user"
+                            ? "text-blue-100"
+                            : "text-gray-500 dark:text-gray-400"
+                        }`}
                       >
-                        <GitFork size={12} className="mr-1" /> Branch
-                      </button>
-                    )}
+                        {formatTime(message.timestamp)}
+                      </span>
+                      {message.role === "assistant" && (
+                        <button
+                          className="text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
+                          onClick={() =>
+                            handleCreateBranch(
+                              getMessageBranchId(message.id)!,
+                              message.id
+                            )
+                          }
+                        >
+                          <GitFork size={10} className="mr-1" /> Branch
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="mt-1 text-base">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                      components={
-                        {
-                          // Optionally, style code blocks, tables, etc. here
+                  <div className="px-3 pb-3">
+                    <div className="text-sm leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                        components={
+                          {
+                            // Optionally, style code blocks, tables, etc. here
+                          }
                         }
-                      }
-                    >
-                      {message.content}
-                    </ReactMarkdown>
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Show branch indicators if this message has branches */}
               {hasBranches && message.role === "assistant" && (
-                <div className="flex justify-start pl-12 mt-1 mb-3">
+                <div className="flex justify-start pl-8 mt-1 mb-2">
                   <div className="flex items-center space-x-2">
                     <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                      <GitBranch size={12} className="mr-1" />
+                      <GitBranch size={10} className="mr-1" />
                       {forkingBranches.length === 1
                         ? "1 branch"
                         : `${forkingBranches.length} branches`}{" "}
@@ -433,7 +438,7 @@ export default function ConversationView({
                       {forkingBranches.slice(0, 3).map((branch) => (
                         <div
                           key={branch.id}
-                          className="w-2 h-2 rounded-full"
+                          className="w-1.5 h-1.5 rounded-full"
                           style={{ backgroundColor: branch.color }}
                           title={branch.name}
                         ></div>

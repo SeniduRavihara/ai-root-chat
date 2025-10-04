@@ -7,6 +7,8 @@ import ReactFlow, {
   Controls,
   EdgeTypes,
   MarkerType,
+  Node,
+  Edge,
   NodeTypes,
 } from "reactflow";
 import "reactflow/dist/style.css";
@@ -64,7 +66,7 @@ export default function BranchTreeFlow({
     }
 
     // Create nodes with stable structure
-    const newNodes = branchValues.map((b) => {
+    const newNodes: Node[] = branchValues.map((b) => {
       const color = b.color || "#6366f1";
       const messageCount = Array.isArray(b.messages) ? b.messages.length : 0;
 
@@ -84,7 +86,7 @@ export default function BranchTreeFlow({
           color: "#f9fafb",
           fontSize: "14px",
           fontWeight: "500",
-          textAlign: "center",
+          textAlign: "center" as const,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -98,7 +100,7 @@ export default function BranchTreeFlow({
     });
 
     // Create edges with stable structure
-    const newEdges = branchValues
+    const newEdges: Edge[] = branchValues
       .filter((b) => b.parentId && branchesData[b.parentId])
       .map((b) => {
         const color = b.color || "#6366f1";
@@ -170,7 +172,7 @@ export default function BranchTreeFlow({
   return (
     <div style={{ height }}>
       <ReactFlow
-        key={reactFlowKey} // Force complete re-render when switching chats
+        key={reactFlowKey}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}

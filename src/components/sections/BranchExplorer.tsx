@@ -153,22 +153,22 @@ export default function BranchExplorer({
         </div>
 
         {/* Chats List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {isChatsLoading ? (
-            <div className="space-y-2" aria-busy="true" aria-live="polite">
-              {[...Array(6)].map((_, i) => (
+            <div className="space-y-1" aria-busy="true" aria-live="polite">
+              {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur animate-pulse"
+                  className="p-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur animate-pulse"
                 >
                   <div className="flex items-center">
-                    <div className="w-1.5 h-10 rounded-full mr-3 bg-gray-200 dark:bg-gray-800" />
+                    <div className="w-1 h-6 rounded-full mr-2 bg-gray-200 dark:bg-gray-800" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-800" />
-                        <div className="ml-3 w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-800" />
+                        <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-800" />
+                        <div className="ml-2 w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-800" />
                       </div>
-                      <div className="mt-2 h-3 w-48 rounded bg-gray-200 dark:bg-gray-800" />
+                      <div className="mt-1 h-2 w-32 rounded bg-gray-200 dark:bg-gray-800" />
                     </div>
                   </div>
                 </div>
@@ -184,8 +184,8 @@ export default function BranchExplorer({
 
               const preview =
                 lastMsg && typeof lastMsg.content === "string"
-                  ? `${lastMsg.content.slice(0, 80)}${
-                      lastMsg.content.length > 80 ? "…" : ""
+                  ? `${lastMsg.content.slice(0, 50)}${
+                      lastMsg.content.length > 50 ? "…" : ""
                     }`
                   : "";
 
@@ -193,33 +193,37 @@ export default function BranchExplorer({
                 <button
                   key={chat.id}
                   onClick={() => makeChatActive(chat.id)}
-                  className={`w-full text-left p-3 rounded-xl border transition-all
+                  className={`w-full text-left p-2 rounded-lg transition-all duration-200 group
             ${
               activeChatId === chat.id
-                ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                : "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 border-gray-200 dark:border-gray-800"
+                ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500"
+                : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
             }`}
                 >
                   <div className="flex items-center">
                     <div
-                      className="w-1.5 h-10 rounded-full mr-3"
+                      className="w-1 h-6 rounded-full mr-2 flex-shrink-0"
                       style={{ backgroundColor: chat.color }}
                     />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium truncate">{chat.name}</h4>
-                        <div
-                          className="ml-3 flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold"
-                          style={{
-                            backgroundColor: `${chat.color}20`,
-                            color: chat.color,
-                          }}
-                          title={`${count} messages`}
-                        >
-                          {count}
-                        </div>
+                        <h4 className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
+                          {chat.name}
+                        </h4>
+                        {count > 0 && (
+                          <div
+                            className="ml-2 flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium flex-shrink-0"
+                            style={{
+                              backgroundColor: `${chat.color}20`,
+                              color: chat.color,
+                            }}
+                            title={`${count} messages`}
+                          >
+                            {count}
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+                      <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">
                         {preview || "No messages yet"}
                       </div>
                     </div>
@@ -228,36 +232,36 @@ export default function BranchExplorer({
               );
             })
           ) : (
-            <div className="px-3 py-6 text-sm text-gray-500 dark:text-gray-400">
+            <div className="px-2 py-4 text-xs text-gray-500 dark:text-gray-400 text-center">
               No chats yet. Create one to get started.
             </div>
           )}
         </div>
 
         {/* Actions Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="p-2 border-t border-gray-200 dark:border-gray-800">
           <button
             onClick={openNewChatModal}
-            className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium"
+            className="w-full py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm font-medium transition-colors"
           >
-            <Plus size={16} className="mr-2" /> New Chat
+            <Plus size={14} className="mr-1.5" /> New Chat
           </button>
         </div>
 
         {/* Account Menu */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800 relative">
+        <div className="p-2 border-t border-gray-200 dark:border-gray-800 relative">
           <button
             onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-            className="w-full py-2 px-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center justify-between font-medium border border-gray-200 dark:border-gray-700 transition-colors duration-200"
+            className="w-full py-1.5 px-2 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg flex items-center justify-between text-sm font-medium border border-gray-200 dark:border-gray-700 transition-colors duration-200"
           >
             <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <User size={16} className="text-blue-500" />
+              <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <User size={12} className="text-blue-500" />
               </div>
-              <span className="ml-3">Account</span>
+              <span className="ml-2">Account</span>
             </div>
             <ChevronDown
-              size={16}
+              size={12}
               className={`transform transition-transform duration-200 ${
                 isAccountMenuOpen ? "rotate-180" : ""
               }`}
