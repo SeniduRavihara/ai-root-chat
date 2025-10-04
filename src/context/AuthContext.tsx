@@ -1,15 +1,14 @@
 "use client";
 
 import { INITIAL_AUTH_CONTEXT } from "@/constants";
-import { featchCurrentUserData, fetchUserBranchData } from "@/firebase/api";
+import { featchCurrentUserData } from "@/firebase/api";
 import { auth } from "@/firebase/firebase_config";
 import { useData } from "@/hooks/useData";
-import { AuthContextType, BranchWithMessages, UserDataType } from "@/types";
+import { AuthContextType, UserDataType } from "@/types";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext<AuthContextType>(INITIAL_AUTH_CONTEXT);
-
 
 const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { setCurrentUserData } = useData();
@@ -45,7 +44,7 @@ const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return unsubscribe;
-  }, [setCurrentUserData]);
+  }, []);
 
   const value = {
     currentUser,

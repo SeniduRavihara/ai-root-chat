@@ -122,7 +122,7 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return unsubscribe;
-  }, [currentUserData, setCurrentUserData]);
+  }, [currentUserData]);
 
   // Load last active chat from localStorage
   useEffect(() => {
