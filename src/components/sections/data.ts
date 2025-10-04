@@ -1,7 +1,7 @@
 import { BranchWithMessages } from "@/types";
 
 export const mockBranchesData: Record<string, BranchWithMessages> = {
-  "main": {
+  main: {
     id: "main",
     name: "Main Branch",
     parentId: null,
@@ -13,6 +13,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "What should I invest in?",
         timestamp: "2025-05-08T10:00:00Z",
+        branchId: "main",
       },
       {
         id: "msg2",
@@ -20,12 +21,14 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "That depends on your risk tolerance and investment goals. Could you tell me more about your situation?",
         timestamp: "2025-05-08T10:01:00Z",
+        branchId: "main",
       },
       {
         id: "msg3",
         role: "user",
         content: "I'm moderate risk and looking for long-term growth.",
         timestamp: "2025-05-08T10:02:00Z",
+        branchId: "main",
       },
       {
         id: "msg4",
@@ -33,6 +36,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "For moderate risk with long-term growth, consider a portfolio with 60% broad market ETFs, 20% bonds, and 20% in select growth stocks.",
         timestamp: "2025-05-08T10:03:00Z",
+        branchId: "main",
       },
     ],
   },
@@ -48,6 +52,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "Actually, I can tolerate high risk for better returns.",
         timestamp: "2025-05-08T10:04:00Z",
+        branchId: "high-risk",
       },
       {
         id: "msg6",
@@ -55,12 +60,14 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "For high-risk investors, consider 70% growth stocks, 20% emerging markets, and 10% speculative investments like crypto or startups.",
         timestamp: "2025-05-08T10:05:00Z",
+        branchId: "high-risk",
       },
       {
         id: "msg7",
         role: "user",
         content: "Tell me more about crypto investing.",
         timestamp: "2025-05-08T10:06:00Z",
+        branchId: "high-risk",
       },
       {
         id: "msg8",
@@ -68,6 +75,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "Crypto investing is highly volatile but potentially lucrative. Focus on established projects like Bitcoin and Ethereum as your core holdings (70%), then allocate 20% to mid-caps and 10% to promising new projects.",
         timestamp: "2025-05-08T10:07:00Z",
+        branchId: "high-risk",
       },
     ],
   },
@@ -83,6 +91,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "What if I prefer lower risk instead?",
         timestamp: "2025-05-08T10:08:00Z",
+        branchId: "low-risk",
       },
       {
         id: "msg10",
@@ -90,6 +99,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "For conservative investors, I recommend 40% bonds, 40% blue-chip dividend stocks, 15% broad market ETFs, and 5% cash reserves.",
         timestamp: "2025-05-08T10:09:00Z",
+        branchId: "low-risk",
       },
     ],
   },
@@ -105,6 +115,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "Can you recommend specific crypto projects to research?",
         timestamp: "2025-05-08T10:10:00Z",
+        branchId: "crypto-focus",
       },
       {
         id: "msg12",
@@ -112,10 +123,11 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "Beyond Bitcoin and Ethereum, consider researching Solana for speed, Polygon for scaling, Chainlink for oracles, and Polkadot for interoperability. Each serves different purposes in the ecosystem.",
         timestamp: "2025-05-08T10:11:00Z",
+        branchId: "crypto-focus",
       },
     ],
   },
-  
+
   "real-estate": {
     id: "real-estate",
     name: "Real Estate Option",
@@ -128,6 +140,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "What about including real estate in my portfolio?",
         timestamp: "2025-05-08T10:12:00Z",
+        branchId: "real-estate",
       },
       {
         id: "msg14",
@@ -135,6 +148,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "Real estate makes an excellent addition to a moderate risk portfolio. Consider REITs for liquidity, rental properties for income, or crowdfunding platforms for lower capital requirements.",
         timestamp: "2025-05-08T10:13:00Z",
+        branchId: "real-estate",
       },
     ],
   },
@@ -150,6 +164,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "Tell me more about REITs specifically.",
         timestamp: "2025-05-08T10:14:00Z",
+        branchId: "reits-focus",
       },
       {
         id: "msg16",
@@ -157,6 +172,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "REITs are securities that invest in real estate and distribute 90% of taxable income to shareholders. Look for residential, commercial, healthcare, and data center REITs with strong dividend histories and manageable debt levels.",
         timestamp: "2025-05-08T10:15:00Z",
+        branchId: "reits-focus",
       },
     ],
   },
@@ -172,6 +188,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         role: "user",
         content: "Tell me more about REITs specifically.",
         timestamp: "2025-05-08T10:14:00Z",
+        branchId: "reits-focus2",
       },
       {
         id: "msg16",
@@ -179,6 +196,7 @@ export const mockBranchesData: Record<string, BranchWithMessages> = {
         content:
           "REITs are securities that invest in real estate and distribute 90% of taxable income to shareholders. Look for residential, commercial, healthcare, and data center REITs with strong dividend histories and manageable debt levels.",
         timestamp: "2025-05-08T10:15:00Z",
+        branchId: "reits-focus2",
       },
     ],
   },

@@ -11,7 +11,7 @@ const TestPage = () => {
   }
   return (
     <div>
-      <button onClick={() => addMockData(currentUser?.uid)}>
+      <button onClick={() => addMockData(currentUser?.uid, "chat1")}>
         Add Mock Data
       </button>
     </div>

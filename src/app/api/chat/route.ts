@@ -36,12 +36,36 @@ export async function POST(req: Request) {
       }
     }
 
+    const systemMessage = {
+      role: "user",
+      parts: [
+        {
+          text:
+            "You are an assistant. give the result with markdown styles to impress and equations in math answers",
+        },
+      ],
+    };
+
+    let fullHistory = [];
+    if (
+      !history.length ||
+      !(
+        history[0]?.parts &&
+        history[0].parts[0]?.text &&
+        history[0].parts[0].text.includes(" give the result with markdown styles to impress and equations in math answers")
+      )
+    ) {
+      fullHistory = [systemMessage, ...history];
+    } else {
+      fullHistory = [...history];
+    }
+
     const currentMessage = {
       role: "user",
       parts: [{ text: question }],
     };
 
-    const fullHistory = [...history, currentMessage];
+    fullHistory.push(currentMessage);
 
     const result = await gemi.models.generateContent({
       model: "gemini-2.0-flash",
@@ -65,10 +89,19 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
       }
     );
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid request body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+  } catch (error) {
+    // LOG THE ACTUAL ERROR
+    console.error("API Error:", error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: "Invalid request body",
+        details: error instanceof Error ? error.message : String(error)
+      }), 
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }

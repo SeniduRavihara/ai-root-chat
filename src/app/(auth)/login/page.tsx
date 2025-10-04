@@ -1,6 +1,6 @@
 "use client";
 
-import { googleSignIn, login } from "@/firebase/api";
+import { googleSignIn, login } from "@/firebase/services/AuthService";
 import { Bot, Github, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); 
     await login({ email, password });
     router.push("/");
   };

@@ -4,13 +4,12 @@ import { useData } from "@/hooks/useData";
 import { useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
+import BranchTreeFlow from "./BranchTreeFlow";
 import ConversationView from "./ConversationView";
-import BranchTreeVisualization from "./processBranchesForTreeView";
-// import { mockBranchesData } from "./data";
 
 export default function BranchingChatTree() {
-  const { currentUserData } = useData();
-  const branchesData = currentUserData?.branches || {};
+  const { currentUserData, branchesData } = useData();
+
   const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
   const [windowHeight, setWindowHeight] = useState<number>(0);
@@ -26,6 +25,47 @@ export default function BranchingChatTree() {
   // Min and max heights for the tree view
   const MIN_HEIGHT = 150;
   const MAX_HEIGHT_RATIO = 0.8; // 80% of window height
+
+  // Initialize with main branch or last saved branch if exists
+  useEffect(() => {
+    // Only load from localStorage if we don't have an activeBranch set yet
+    if (!activeBranch) {
+      try {
+        const saved = localStorage.getItem("activeBranchId");
+        if (saved) {
+          setActiveBranch(saved);
+        }
+      } catch {}
+    }
+
+    // If we have branches data but the current activeBranch doesn't exist in it,
+    // reset to the first available branch (usually "main")
+    if (
+      Object.keys(branchesData).length > 0 &&
+      activeBranch &&
+      !branchesData[activeBranch]
+    ) {
+      console.log(
+        `Active branch ${activeBranch} not found in current chat, switching to first available branch`
+      );
+      const firstBranchId = Object.keys(branchesData)[0];
+      setActiveBranch(firstBranchId);
+
+      // Save the new active branch to localStorage
+      try {
+        localStorage.setItem("activeBranchId", firstBranchId);
+      } catch {}
+    }
+  }, [branchesData]); // Remove activeBranch from dependencies to prevent infinite loop
+
+  // Save activeBranch to localStorage whenever it changes
+  useEffect(() => {
+    if (activeBranch) {
+      try {
+        localStorage.setItem("activeBranchId", activeBranch);
+      } catch {}
+    }
+  }, [activeBranch]);
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -45,9 +85,19 @@ export default function BranchingChatTree() {
     return () => window.removeEventListener("resize", handleResize);
   }, [treeViewHeight]);
 
+  // Add/remove `no-select` class to body during resize
+  useEffect(() => {
+    if (isResizing) {
+      document.body.classList.add("no-select");
+    } else {
+      document.body.classList.remove("no-select");
+    }
+  }, [isResizing]);
+
   // Mouse down handler for starting resize
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
 
     const startY = e.clientY;
@@ -79,6 +129,7 @@ export default function BranchingChatTree() {
   // Touch handlers for mobile support
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsResizing(true);
 
     const startY = e.touches[0].clientY;
@@ -106,31 +157,48 @@ export default function BranchingChatTree() {
     document.addEventListener("touchend", handleTouchEnd);
   };
 
+  // Enhanced branch switching
+  const handleBranchSwitch = (branchId: string) => {
+    setActiveBranch(branchId);
+    try {
+      localStorage.setItem("activeBranchId", branchId);
+    } catch {}
+  };
+
   // Get the full message history for a branch (including all ancestor messages)
   const getBranchMessages = (branchId: string): Message[] => {
     const branchPath = getBranchPath(branchId);
-    let messages: Message[] = [];
+    let allMessages: Message[] = [];
 
+    // Build the complete message history by traversing the branch path
     for (let i = 0; i < branchPath.length; i++) {
-      const { branchId, parentMessageId } = branchPath[i];
-      const branch = branchesData[branchId];
+      const { branchId: currentBranchId, parentMessageId } = branchPath[i];
+      const branch = branchesData[currentBranchId];
+
+      if (!branch) continue;
 
       if (i === 0) {
-        messages = [...branch.messages];
+        // Root branch - add all its messages
+        allMessages = [...branch.messages];
       } else {
-        const forkIndex = messages.findIndex(
+        // Child branch - inherit messages up to the fork point, then add branch-specific messages
+        const forkIndex = allMessages.findIndex(
           (msg) => msg.id === parentMessageId
         );
 
         if (forkIndex >= 0) {
-          messages = [...messages.slice(0, forkIndex + 1), ...branch.messages];
+          // Keep messages up to and including the fork point, then add branch messages
+          const inheritedMessages = allMessages.slice(0, forkIndex + 1);
+          const branchMessages = branch.messages;
+          allMessages = [...inheritedMessages, ...branchMessages];
         } else {
-          messages = [...messages, ...branch.messages];
+          // If fork point not found, just append branch messages
+          allMessages = [...allMessages, ...branch.messages];
         }
       }
     }
 
-    return messages;
+    return allMessages;
   };
 
   // Helper function to get the branch path from root to current branch
@@ -166,67 +234,78 @@ export default function BranchingChatTree() {
   const filteredBranches: BranchWithMessages[] = Object.values(
     branchesData
   ).filter((branch): branch is BranchWithMessages =>
-    branch.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (branch?.name ?? "")
+      .toLowerCase()
+      .includes((searchQuery ?? "").toLowerCase())
   );
 
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100"
+      className="relative flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden"
     >
-      {/* Resizable Branch Tree Visualization */}
+      {/* Left Sidebar - Full Height */}
+      <BranchExplorer
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeBranch={activeBranch}
+        setActiveBranch={handleBranchSwitch}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        filteredBranches={filteredBranches}
+        branchesData={branchesData}
+      />
+
+      {/* Right Content Area - Responsive to sidebar state */}
       <div
-        className="relative border-b border-gray-200 dark:border-gray-800"
-        style={{ height: `${treeViewHeight}px` }}
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "ml-80" : "ml-0"
+        }`}
       >
-        <BranchTreeVisualization
-          activeBranch={activeBranch}
-          setActiveBranch={setActiveBranch}
-          hoveredBranch={hoveredBranch}
-          setHoveredBranch={setHoveredBranch}
-          expandedTreeView={true} // Always expanded since we have manual resize
-          setExpandedTreeView={() => {}} // No-op since we handle resize manually
-          treeViewHeight={treeViewHeight}
-          branchesData={branchesData}
-        />
-
-        {/* Resize Handle */}
+        {/* Resizable Branch Tree Visualization */}
         <div
-          ref={resizeRef}
-          className={`absolute bottom-0 left-0 right-0 h-2 cursor-row-resize group
-            ${isResizing ? "bg-blue-500" : "hover:bg-blue-400"}
-            transition-colors duration-150`}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+          className="relative border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
+          style={{
+            height: `${treeViewHeight}px`,
+            minHeight: `${MIN_HEIGHT}px`,
+          }}
         >
-          {/* Visual indicator for the resize handle */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-1 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 transition-colors duration-150" />
+          {/* Switchable: ReactFlow-based layout to avoid overlaps */}
+          <BranchTreeFlow
+            branchesData={branchesData}
+            activeBranch={activeBranch}
+            setActiveBranch={handleBranchSwitch}
+            height={treeViewHeight - 0}
+          />
 
-          {/* Tooltip */}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap">
-            Drag to resize tree view
+          {/* Resize Handle */}
+          <div
+            ref={resizeRef}
+            className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
+              bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            style={{ cursor: "row-resize" }}
+          >
+            {/* Visible separator line */}
+            <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
+            {/* Drag indicator */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
+            {/* Tooltip */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
+              Drag to resize tree view
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <BranchExplorer
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          activeBranch={activeBranch}
-          setActiveBranch={setActiveBranch}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          filteredBranches={filteredBranches}
-          mockBranchesData={branchesData}
-          treeViewHeight={treeViewHeight}
-        />
-
-        <ConversationView
-          activeBranch={activeBranch}
-          getBranchMessages={getBranchMessages}
-          mockBranchesData={branchesData}
-        />
+        {/* Conversation View - Takes remaining height */}
+        <div className="flex-1 overflow-auto">
+          <ConversationView
+            activeBranch={activeBranch}
+            getBranchMessages={getBranchMessages}
+            branchesData={branchesData}
+          />
+        </div>
       </div>
 
       {/* Add CSS for global animations and resize cursor */}
@@ -257,7 +336,7 @@ export default function BranchingChatTree() {
 
         /* Custom cursor for resize handle */
         .cursor-row-resize {
-          cursor: row-resize;
+          cursor: row-resize !important;
         }
 
         /* Prevent text selection during resize */
@@ -266,6 +345,11 @@ export default function BranchingChatTree() {
           -webkit-user-select: none;
           -moz-user-select: none;
           -ms-user-select: none;
+        }
+
+        /* Ensure resize handle is always on top */
+        .resize-handle {
+          z-index: 1000;
         }
       `}</style>
     </div>

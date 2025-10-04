@@ -3,11 +3,16 @@
 import { User } from "firebase/auth";
 import React from "react";
 
+// Updated Data Context Types
 export type DataContextType = {
-  currentUserData: UserWithMessages | null;
-  setCurrentUserData: React.Dispatch<
-    React.SetStateAction<UserWithMessages | null>
-  >;
+  currentUserData: UserDataType | null;
+  setCurrentUserData: React.Dispatch<React.SetStateAction<UserDataType | null>>;
+  branchesData: Record<string, BranchWithMessages>;
+  makeChatActive: (id: string) => void;
+  allChats: Chat[] | null;
+  activeChatId?: string | null;
+  isChatsLoading?: boolean;
+  setBranchesData: React.Dispatch<React.SetStateAction<Record<string, BranchWithMessages>>>;
 };
 
 export type AuthContextType = {
@@ -34,6 +39,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  branchId?: string; // Link message to specific branch
 }
 
 export interface ChatNode {
@@ -65,11 +71,19 @@ export interface Branch {
   name: string;
   parentId: string | null;
   parentMessageId: string | null;
-  isExpanded?: boolean;
-  level?: number;
+  color: string;
+  // isExpanded?: boolean;
+  // level?: number;
 }
 
 export interface BranchWithMessages extends Branch {
-  color: string;
+  // color: string;color: string;color: string;color: string;color: string;color: string;color: string;color: string;
   messages: Message[];
 }
+
+export type Chat = {
+  id: string;
+  name: string;
+  color: string;
+  messages: Message[];
+};
