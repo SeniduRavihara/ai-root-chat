@@ -12,45 +12,61 @@ export const AuthContext = createContext<AuthContextType>(INITIAL_AUTH_CONTEXT);
 
 const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { setCurrentUserData } = useData();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+const [currentUser, setCurrentUser] = useState<User | null>(null);
+const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+  let isMounted = true;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setCurrentUser(null);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        console.log("Auth state is changed: LoggedOut");
-        return;
-      }
+  if (!isMounted) return;
 
-      const userData = (await featchCurrentUserData(user)) as UserDataType;
-      // const userBranchData = await fetchUserBranchData(user.uid);
+      try {
+  if (!user) {
+  setCurrentUser(null);
+  setCurrentUserData(null);
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  console.log("Auth state is changed: LoggedOut");
+} else {
+    const userData = (await featchCurrentUserData(user)) as UserDataType;
 
-      // setCurrentUserData({
-      //   ...userData,
-      //   branches: userBranchData as Record<string, BranchWithMessages>,
-      // });
+    if (!isMounted) return;
 
-      setCurrentUserData(userData);
+          setCurrentUserData(userData);
+  setCurrentUser(user);
 
-      setCurrentUser(user);
+  const accessToken = await user.getIdToken();
+  localStorage.setItem("token", accessToken);
+          localStorage.setItem("user", JSON.stringify(user));
 
-      const accessToken = await user.getIdToken();
+  console.log("Auth state is changed: loggedIn");
+}
+      } catch (error) {
+console.error("Error during auth state change:", error);
+        if (isMounted) {
+  setCurrentUser(null);
+  setCurrentUserData(null);
+}
+} finally {
+if (isMounted) {
+  setLoading(false);
+  }
+}
+});
 
-      localStorage.setItem("token", accessToken);
-      localStorage.setItem("user", JSON.stringify(user));
-      console.log("Auth state is changed: loggedIn");
-    });
+return () => {
+isMounted = false;
+unsubscribe();
+};
+}, [setCurrentUserData]);
 
-    return unsubscribe;
-  }, []);
+const value = {
+currentUser,
+setCurrentUser,
+loading,
+};
 
-  const value = {
-    currentUser,
-    setCurrentUser,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 export default AuthContextProvider;

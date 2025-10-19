@@ -3,24 +3,27 @@
 import { googleSignIn, login } from "@/firebase/services/AuthService";
 import { Bot, Github, Mail } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const LoginPage = () => {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); 
-    await login({ email, password });
-    router.push("/");
+    e.preventDefault();
+    try {
+      await login({ email, password });
+      // Auth layout will handle redirect when user state changes
+    } catch (error) {
+      console.error("Login error:", error);
+      // Handle login error (could add error state here)
+    }
   };
 
   const handleGoogleSignIn = async () => {
     try {
       await googleSignIn();
-      router.push("/");
+      // Auth layout will handle redirect when user state changes
     } catch (error) {
       console.error("Google sign in error:", error);
     }

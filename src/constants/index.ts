@@ -10,4 +10,5 @@ export const INITIAL_DATA_CONTEXT = {
 export const INITIAL_AUTH_CONTEXT = {
   currentUser: null,
   setCurrentUser: () => {},
+  loading: true,
 };

@@ -17,7 +17,7 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [allChats, setAllChats] = useState<Chat[]>([]);
   const [activeBranch, setActiveBranch] = useState<string | null>(null);
-  const [isChatsLoading, setIsChatsLoading] = useState<boolean>(true);
+  const [isChatsLoading, setIsChatsLoading] = useState<boolean>(false);
 
   const [currentUserData, setCurrentUserData] = useState<UserDataType | null>(
     null
@@ -99,7 +99,13 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentChat, setCurrentChat] = useState();
 
   useEffect(() => {
-    if (!currentUserData) return;
+    if (!currentUserData) {
+      setAllChats([]);
+      setIsChatsLoading(false);
+      return;
+    }
+
+    setIsChatsLoading(true);
 
     const chatsCollectionRef = collection(
       db,
@@ -118,7 +124,10 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
         setAllChats(chatsArr);
         setIsChatsLoading(false);
       },
-      () => setIsChatsLoading(false)
+      (error) => {
+        console.error("Error loading chats:", error);
+        setIsChatsLoading(false);
+      }
     );
 
     return unsubscribe;

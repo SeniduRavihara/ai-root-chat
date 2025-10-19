@@ -18,6 +18,7 @@ export type DataContextType = {
 export type AuthContextType = {
   currentUser: User | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+  loading: boolean;
 };
 
 export type UserDataType = {

@@ -406,15 +406,63 @@ export default function ConversationView({
                   </div>
 
                   <div className="px-3 pb-3">
-                    <div className="text-sm leading-relaxed">
+                    <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-code:bg-slate-200 dark:prose-code:bg-slate-700 prose-pre:bg-slate-100 dark:prose-pre:bg-slate-800">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeKatex]}
-                        components={
-                          {
-                            // Optionally, style code blocks, tables, etc. here
-                          }
-                        }
+                        components={{
+                          code({
+                          className,
+                          children,
+                          ...props
+                          }) {
+                          const isCodeBlock = className && className.startsWith('language-');
+                            return isCodeBlock ? (
+                            <pre className="overflow-x-auto rounded-lg bg-slate-800 p-4 text-slate-100">
+                            <code className={className} {...props}>
+                                {children}
+                              </code>
+                          </pre>
+                          ) : (
+                          <code
+                          className={`${className} rounded bg-slate-200 px-1 py-0.5 text-sm dark:bg-slate-700`}
+                            {...props}
+                            >
+                            {children}
+                          </code>
+                          );
+                          },
+                          table({ children }) {
+                            return (
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-600">
+                                  {children}
+                                </table>
+                              </div>
+                            );
+                          },
+                          th({ children }) {
+                            return (
+                              <th className="border border-slate-300 bg-slate-50 px-4 py-2 text-left font-medium dark:border-slate-600 dark:bg-slate-700">
+                                {children}
+                              </th>
+                            );
+                          },
+                          td({ children }) {
+                            return (
+                              <td className="border border-slate-300 px-4 py-2 dark:border-slate-600">
+                                {children}
+                              </td>
+                            );
+                          },
+                          blockquote({ children }) {
+                            return (
+                              <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic dark:bg-blue-900/20">
+                                {children}
+                              </blockquote>
+                            );
+                          },
+                        }}
                       >
                         {message.content}
                       </ReactMarkdown>
