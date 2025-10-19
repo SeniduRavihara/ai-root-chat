@@ -3,10 +3,20 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useData } from "@/hooks/useData";
 import BranchingChatTree from "@/components/sections/BranchingChatTree";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
   const { currentUser, loading: authLoading } = useAuth();
   const { currentUserData, isChatsLoading } = useData();
+  const router = useRouter();
+
+  // Handle logout redirect
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.push("/login");
+    }
+  }, [currentUser, authLoading, router]);
 
   // Show loading while auth is initializing or user data is loading
   if (authLoading || !currentUser || !currentUserData) {
