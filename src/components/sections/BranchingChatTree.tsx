@@ -22,6 +22,9 @@ export default function BranchingChatTree() {
   const [renamingChats, setRenamingChats] = useState<Set<string>>(new Set());
   const [isCreatingChat, setIsCreatingChat] = useState<boolean>(false);
 
+  // View modes: 'both', 'chat-only', 'tree-only'
+  const [viewMode, setViewMode] = useState<'both' | 'chat-only' | 'tree-only'>('both');
+
   // Functions to control renaming animation
   const startRenaming = useCallback((chatId: string) => {
     setRenamingChats(prev => new Set(prev).add(chatId));
@@ -402,6 +405,45 @@ export default function BranchingChatTree() {
       ref={containerRef}
       className="relative flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden"
     >
+      {/* Mode Selector - Top Right Corner */}
+      <div className="absolute top-4 right-4 z-50 flex items-center space-x-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 flex">
+          <button
+            onClick={() => setViewMode('chat-only')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              viewMode === 'chat-only'
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title="Chat Only Mode"
+          >
+            💬 Chat
+          </button>
+          <button
+            onClick={() => setViewMode('tree-only')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              viewMode === 'tree-only'
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title="Tree Only Mode"
+          >
+            🌳 Tree
+          </button>
+          <button
+            onClick={() => setViewMode('both')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              viewMode === 'both'
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title="Both Views Mode"
+          >
+            🔄 Both
+          </button>
+        </div>
+      </div>
+
       {/* Left Sidebar - Full Height */}
       <BranchExplorer
         sidebarOpen={sidebarOpen}
@@ -423,52 +465,58 @@ export default function BranchingChatTree() {
           sidebarOpen ? "ml-80" : "ml-0"
         }`}
       >
-        {/* Resizable Branch Tree Visualization */}
-        <div
-          className="relative border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
-          style={{
-            height: `${treeViewHeight}px`,
-            minHeight: `${MIN_HEIGHT}px`,
-          }}
-        >
-          {/* Switchable: ReactFlow-based layout to avoid overlaps */}
-          <BranchTreeFlow
-            branchesData={branchesData}
-            activeBranch={activeBranch}
-            setActiveBranch={handleBranchSwitch}
-            height={treeViewHeight - 0}
-          />
-
-          {/* Resize Handle */}
+        {/* Conditionally render tree view based on mode */}
+        {(viewMode === 'both' || viewMode === 'tree-only') && (
           <div
-            ref={resizeRef}
-            className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
-              bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            style={{ cursor: "row-resize" }}
+            className={`relative ${viewMode === 'tree-only' ? 'flex-1' : ''} border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900`}
+            style={viewMode === 'both' ? {
+              height: `${treeViewHeight}px`,
+              minHeight: `${MIN_HEIGHT}px`,
+            } : undefined}
           >
-            {/* Visible separator line */}
-            <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
-            {/* Drag indicator */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
-            {/* Tooltip */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
-              Drag to resize tree view
-            </div>
-          </div>
-        </div>
+            {/* Switchable: ReactFlow-based layout to avoid overlaps */}
+            <BranchTreeFlow
+              branchesData={branchesData}
+              activeBranch={activeBranch}
+              setActiveBranch={handleBranchSwitch}
+              height={viewMode === 'tree-only' ? windowHeight - 100 : treeViewHeight - 0}
+            />
 
-        {/* Conversation View - Takes remaining height */}
-        <div className="flex-1 overflow-auto">
-          <ConversationView
-            activeBranch={activeBranch}
-            getBranchMessages={getBranchMessages}
-            branchesData={branchesData}
-            onRenamingStart={startRenaming}
-            onRenamingEnd={stopRenaming}
-          />
-        </div>
+            {/* Resize Handle - Only show in both mode */}
+            {viewMode === 'both' && (
+              <div
+                ref={resizeRef}
+                className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
+                  bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                style={{ cursor: "row-resize" }}
+              >
+                {/* Visible separator line */}
+                <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
+                {/* Drag indicator */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
+                {/* Tooltip */}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
+                  Drag to resize tree view
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Conditionally render chat view based on mode */}
+        {(viewMode === 'both' || viewMode === 'chat-only') && (
+          <div className={`flex-1 overflow-auto ${viewMode === 'chat-only' ? 'h-full' : ''}`}>
+            <ConversationView
+              activeBranch={activeBranch}
+              getBranchMessages={getBranchMessages}
+              branchesData={branchesData}
+              onRenamingStart={startRenaming}
+              onRenamingEnd={stopRenaming}
+            />
+          </div>
+        )}
       </div>
 
       {/* Add CSS for global animations and resize cursor */}
