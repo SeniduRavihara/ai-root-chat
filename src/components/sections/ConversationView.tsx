@@ -23,14 +23,23 @@ interface ConversationViewProps {
   activeBranch: string;
   getBranchMessages: (branchId: string) => Message[];
   branchesData: Record<string, BranchWithMessages>;
+  onRenamingStart?: (chatId: string) => void;
+  onRenamingEnd?: (chatId: string) => void;
 }
 
 export default function ConversationView({
   activeBranch,
   getBranchMessages,
+  onRenamingStart,
+  onRenamingEnd,
 }: ConversationViewProps) {
-  const { setBranchesData, branchesData, currentUserData, activeChatId, allChats } =
-    useData();
+  const {
+    setBranchesData,
+    branchesData,
+    currentUserData,
+    activeChatId,
+    allChats,
+  } = useData();
 
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -50,68 +59,131 @@ export default function ConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   };
 
+  // Get messages from the active branch
+  const getMessages = (): Message[] => {
+    const branchMessages = getBranchMessages(activeBranch);
+    return branchMessages;
+  };
+
+  const allMessages = getMessages();
+
+  // Format timestamp to readable string
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Determine which branch a message belongs to directly (not via inheritance)
+  const getMessageBranchId = (messageId: string): string | null => {
+    for (const branchId in branchesData) {
+      const branch = branchesData[branchId];
+      if (branch.messages.some((msg) => msg.id === messageId)) {
+        return branchId;
+      }
+    }
+    return null;
+  };
+
+  // Check if a message is from the currently active branch (directly, not inherited)
+  const isMessageFromActiveBranch = (messageId: string): boolean => {
+    return (
+      branchesData[activeBranch]?.messages.some(
+        (msg) => msg.id === messageId
+      ) || false
+    );
+  };
+
+  // Find the branch that a message belongs to
+  const getMessageBranch = (messageId: string): BranchWithMessages | null => {
+    const branchId = getMessageBranchId(messageId);
+    return branchId ? branchesData[branchId] : null;
+  };
+
+  // Auto scroll when switching branches/chats
+  useEffect(() => {
+    scrollToBottom("auto");
+  }, [activeBranch]);
+
+  // Smooth scroll on new messages or when requested
   useEffect(() => {
     if (shouldScrollToBottom || isNearBottom()) {
       scrollToBottom("smooth");
       setShouldScrollToBottom(false);
     }
-  }, [shouldScrollToBottom]);
+  }, [allMessages, shouldScrollToBottom]);
 
   // Generate conversation name using AI
-  const generateConversationName = useCallback(async (userMessage: string, aiResponse: string, chatId: string) => {
-    console.log("🎯 Starting conversation naming for chat:", chatId);
+  const generateConversationName = useCallback(
+    async (userMessage: string, aiResponse: string, chatId: string) => {
+      console.log("🎯 Starting conversation naming for chat:", chatId);
 
-    // Check if chat has already been auto-renamed
-    const currentChat = allChats?.find(chat => chat.id === chatId);
-    if (currentChat?.autoRenamed) {
-      console.log("⏭️ Chat already auto-renamed, skipping:", chatId);
-      return;
-    }
-
-    try {
-      const namingPrompt = `User: ${userMessage.substring(0, 200)}${userMessage.length > 200 ? '...' : ''}\n\nAssistant: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''}`;
-
-      console.log("📡 Calling naming API...");
-      const response = await fetch(`/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Naming API failed: ${response.status}`);
+      // Check if chat has already been auto-renamed
+      const currentChat = allChats?.find((chat) => chat.id === chatId);
+      if (currentChat?.autoRenamed) {
+        console.log("⏭️ Chat already auto-renamed, skipping:", chatId);
+        return;
       }
 
-      const data = await response.json();
-      const suggestedName = data.answer?.trim() || "New Conversation";
-      console.log("🤖 AI suggested name:", suggestedName);
+      // Start renaming animation
+      onRenamingStart?.(chatId);
 
-      // Clean up the suggested name (remove quotes, extra spaces, etc.)
-      const cleanName = suggestedName
-        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-        .replace(/\s+/g, ' ') // Normalize spaces
-        .trim();
+      try {
+        const namingPrompt = `User: ${userMessage.substring(0, 200)}${
+          userMessage.length > 200 ? "..." : ""
+        }\n\nAssistant: ${aiResponse.substring(0, 200)}${
+          aiResponse.length > 200 ? "..." : ""
+        }`;
 
-      console.log("✨ Cleaned name:", cleanName);
+        console.log("📡 Calling naming API...");
+        const response = await fetch(
+          `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      // Update chat name in Firestore
-      if (currentUserData && cleanName && cleanName !== "New Conversation") {
-        console.log("💾 Updating chat name in Firestore...");
-        await updateChatName(currentUserData.uid, chatId, cleanName);
-        console.log("✅ Chat renamed to:", cleanName);
-      } else {
-        console.log("⚠️ Skipping update - conditions not met", {
-          hasUserData: !!currentUserData,
-          cleanName,
-          isDifferent: cleanName !== "New Conversation"
-        });
+        if (!response.ok) {
+          throw new Error(`Naming API failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const suggestedName = data.answer?.trim() || "New Conversation";
+        console.log("🤖 AI suggested name:", suggestedName);
+
+        // Clean up the suggested name (remove quotes, extra spaces, etc.)
+        const cleanName = suggestedName
+          .replace(/^["']|["']$/g, "") // Remove surrounding quotes
+          .replace(/\s+/g, " ") // Normalize spaces
+          .trim();
+
+        console.log("✨ Cleaned name:", cleanName);
+
+        // Update chat name in Firestore
+        if (currentUserData && cleanName && cleanName !== "New Conversation") {
+          console.log("💾 Updating chat name in Firestore...");
+          await updateChatName(currentUserData.uid, chatId, cleanName);
+          console.log("✅ Chat renamed to:", cleanName);
+        } else {
+          console.log("⚠️ Skipping update - conditions not met", {
+            hasUserData: !!currentUserData,
+            cleanName,
+            isDifferent: cleanName !== "New Conversation",
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error generating conversation name:", error);
+      } finally {
+        // Stop renaming animation
+        onRenamingEnd?.(chatId);
       }
-
-    } catch (error) {
-      console.error("❌ Error generating conversation name:", error);
-    }
-  }, [currentUserData, allChats]);
+    },
+    [currentUserData, allChats, onRenamingStart, onRenamingEnd]
+  );
 
   // Watch for message count changes to trigger auto-naming
   useEffect(() => {
@@ -121,7 +193,7 @@ export default function ConversationView({
     // If message count just reached 2 (first user + assistant exchange)
     if (currentMessageCount === 2 && lastMessageCount !== 2 && activeChatId) {
       // Check if chat has already been auto-renamed
-      const currentChat = allChats?.find(chat => chat.id === activeChatId);
+      const currentChat = allChats?.find((chat) => chat.id === activeChatId);
 
       if (currentChat?.autoRenamed) {
         console.log("⏭️ Chat already auto-renamed, skipping:", activeChatId);
@@ -129,17 +201,28 @@ export default function ConversationView({
         console.log("🎯 Message count reached 2! Triggering auto-naming...");
         const messages = currentBranch?.messages || [];
         if (messages.length >= 2) {
-          const userMsg = messages.find(m => m.role === 'user');
-          const aiMsg = messages.find(m => m.role === 'assistant');
+          const userMsg = messages.find((m) => m.role === "user");
+          const aiMsg = messages.find((m) => m.role === "assistant");
           if (userMsg && aiMsg) {
-            generateConversationName(userMsg.content, aiMsg.content, activeChatId);
+            generateConversationName(
+              userMsg.content,
+              aiMsg.content,
+              activeChatId
+            );
           }
         }
       }
     }
 
     setLastMessageCount(currentMessageCount);
-  }, [branchesData, activeBranch, activeChatId, lastMessageCount, generateConversationName, allChats]);
+  }, [
+    branchesData,
+    activeBranch,
+    activeChatId,
+    lastMessageCount,
+    generateConversationName,
+    allChats,
+  ]);
 
   // Helper to generate a random color
   function getRandomColor() {
@@ -263,7 +346,11 @@ export default function ConversationView({
     // If we just added the assistant message and there are exactly 2 messages, it's the first exchange
     if (totalMessages === 2) {
       // Trigger automatic chat naming
-      generateConversationName(userMessage.content, assistantMessage, activeChatId);
+      generateConversationName(
+        userMessage.content,
+        assistantMessage,
+        activeChatId
+      );
     }
 
     setIsTyping(false);
@@ -303,16 +390,6 @@ export default function ConversationView({
     });
   };
 
-  const allMessages = getBranchMessages(activeBranch);
-
-  // Format timestamp to readable string
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Branch header */}
@@ -325,13 +402,61 @@ export default function ConversationView({
       >
         {allMessages.map((message, index) => {
           // Determine if this message is from the active branch or inherited
-          const isFromCurrentBranch = true; // Simplified for now
-          const messageBranch = branchesData[activeBranch];
-          const hasBranches = false; // Simplified for now
-          const forkingBranches = [];
+          const isFromCurrentBranch = isMessageFromActiveBranch(message.id);
+          const messageBranch = getMessageBranch(message.id);
+
+          // Check if this message is a branch point
+          const branches = Object.values(branchesData) as BranchWithMessages[];
+          const hasBranches = branches.some(
+            (branch) => branch.parentMessageId === message.id
+          );
+
+          // Find branches that fork from this message
+          const forkingBranches = branches.filter(
+            (branch) => branch.parentMessageId === message.id
+          );
 
           return (
             <div key={message.id}>
+              {/* Branch transition indicator */}
+              {index > 0 &&
+                (() => {
+                  const prevMessageBranchId = getMessageBranchId(
+                    allMessages[index - 1].id
+                  );
+                  const currentMessageBranchId = getMessageBranchId(message.id);
+
+                  if (
+                    prevMessageBranchId &&
+                    currentMessageBranchId &&
+                    prevMessageBranchId !== currentMessageBranchId
+                  ) {
+                    const currentBranch = branchesData[
+                      currentMessageBranchId
+                    ] as BranchWithMessages;
+
+                    return (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="w-full max-w-xs flex items-center">
+                          <div className="flex-grow h-px bg-gray-300 dark:bg-gray-700"></div>
+                          <div
+                            className="px-4 py-1 text-xs rounded-full flex items-center mx-2"
+                            style={{
+                              backgroundColor: `${currentBranch.color}20`,
+                              color: currentBranch.color,
+                            }}
+                          >
+                            <GitBranch size={12} className="mr-1" />
+                            {currentBranch.name} branch begins
+                          </div>
+                          <div className="flex-grow h-px bg-gray-300 dark:bg-gray-700"></div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
               <div
                 className={`flex ${
                   message.role === "user" ? "justify-end" : "justify-start"
@@ -348,7 +473,9 @@ export default function ConversationView({
                       : ""
                   }`}
                   style={
-                    message.role === "assistant" && !isFromCurrentBranch && messageBranch
+                    message.role === "assistant" &&
+                    !isFromCurrentBranch &&
+                    messageBranch
                       ? {
                           borderLeftColor: messageBranch.color,
                         }
@@ -358,7 +485,20 @@ export default function ConversationView({
                   {/* User message styling - compact card */}
                   {message.role === "user" ? (
                     <div className="p-4">
-                      <p className="text-sm leading-relaxed">{message.content}</p>
+                      <p className="text-sm leading-relaxed">
+                        {message.content}
+                      </p>
+                      {!isFromCurrentBranch && messageBranch && (
+                        <span
+                          className="ml-2 text-xs px-1.5 py-0.5 rounded-full text-gray-600 dark:text-gray-300"
+                          style={{
+                            backgroundColor: `${messageBranch.color}20`,
+                            color: messageBranch.color,
+                          }}
+                        >
+                          {messageBranch.name}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     /* AI message styling - spacious, full-width */
@@ -374,12 +514,10 @@ export default function ConversationView({
                               remarkPlugins={[remarkGfm, remarkMath]}
                               rehypePlugins={[rehypeKatex]}
                               components={{
-                                code({
-                                  className,
-                                  children,
-                                  ...props
-                                }) {
-                                  const isCodeBlock = className && className.startsWith('language-');
+                                code({ className, children, ...props }) {
+                                  const isCodeBlock =
+                                    className &&
+                                    className.startsWith("language-");
                                   return isCodeBlock ? (
                                     <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
                                       <code className={className} {...props}>
@@ -424,7 +562,7 @@ export default function ConversationView({
                                       {children}
                                     </blockquote>
                                   );
-                                }
+                                },
                               }}
                             >
                               {message.content}
@@ -438,12 +576,13 @@ export default function ConversationView({
                                     className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
                                     onClick={() =>
                                       handleCreateBranch(
-                                        activeBranch,
+                                        getMessageBranchId(message.id)!,
                                         message.id
                                       )
                                     }
                                   >
-                                    <GitFork size={12} className="mr-1.5" /> Create Branch
+                                    <GitFork size={12} className="mr-1.5" />{" "}
+                                    Create Branch
                                   </button>
                                 )}
                               </div>
