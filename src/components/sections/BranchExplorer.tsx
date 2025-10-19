@@ -25,6 +25,9 @@ interface BranchExplorerProps {
   setSearchQuery: (query: string) => void;
   filteredBranches: BranchWithMessages[];
   branchesData: Record<string, BranchWithMessages>;
+  renamingChats?: Set<string>;
+  onRenamingStart?: (chatId: string) => void;
+  onRenamingEnd?: (chatId: string) => void;
 }
 
 interface BranchWithMessages extends Branch {
@@ -42,6 +45,9 @@ export default function BranchExplorer({
   setSearchQuery,
   filteredBranches,
   branchesData,
+  renamingChats,
+  onRenamingStart,
+  onRenamingEnd,
 }: BranchExplorerProps) {
   const { currentUser } = useAuth();
   const {
@@ -166,7 +172,13 @@ export default function BranchExplorer({
               ))}
             </div>
           ) : allChats && allChats.length > 0 ? (
-            allChats.map((chat) => {
+            [...allChats]
+              .sort((a, b) => {
+                const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                return bTime - aTime;
+              })
+              .map((chat) => {
               const messages = Array.isArray(chat.messages)
                 ? chat.messages
                 : [];
@@ -199,7 +211,18 @@ export default function BranchExplorer({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
-                          {chat.name}
+                          {onRenamingStart && onRenamingEnd && renamingChats?.has(chat.id) ? (
+                            <span className="flex items-center">
+                              <span className="animate-pulse">Renaming...</span>
+                              <div className="ml-1 flex space-x-1">
+                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
+                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                              </div>
+                            </span>
+                          ) : (
+                            chat.name
+                          )}
                         </h4>
                         {count > 0 && (
                           <div

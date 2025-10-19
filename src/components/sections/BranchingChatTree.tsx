@@ -1,7 +1,7 @@
 "use client";
 
 import { useData } from "@/hooks/useData";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import BranchTreeFlow from "./BranchTreeFlow";
@@ -19,7 +19,21 @@ export default function BranchingChatTree() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [renamingChats, setRenamingChats] = useState<Set<string>>(new Set());
   const [isCreatingChat, setIsCreatingChat] = useState<boolean>(false);
+
+  // Functions to control renaming animation
+  const startRenaming = useCallback((chatId: string) => {
+    setRenamingChats(prev => new Set(prev).add(chatId));
+  }, []);
+
+  const stopRenaming = useCallback((chatId: string) => {
+    setRenamingChats(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(chatId);
+      return newSet;
+    });
+  }, []);
 
   // Ref for the resize handle
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -391,6 +405,9 @@ export default function BranchingChatTree() {
         setSearchQuery={setSearchQuery}
         filteredBranches={filteredBranches}
         branchesData={branchesData}
+        renamingChats={renamingChats}
+        onRenamingStart={startRenaming}
+        onRenamingEnd={stopRenaming}
       />
 
       {/* Right Content Area - Responsive to sidebar state */}
@@ -441,6 +458,8 @@ export default function BranchingChatTree() {
             activeBranch={activeBranch}
             getBranchMessages={getBranchMessages}
             branchesData={branchesData}
+            onRenamingStart={startRenaming}
+            onRenamingEnd={stopRenaming}
           />
         </div>
       </div>

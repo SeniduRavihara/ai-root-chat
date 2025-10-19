@@ -26,11 +26,14 @@ function getRandomColor(): string {
 
 export async function createNewChat(uid: string, name?: string) {
   const id = uuidv4();
+  const now = new Date().toISOString();
   const newChat: Chat = {
     id,
     name: name && name.trim() ? name.trim() : "New Chat",
     color: getRandomColor(),
     messages: [],
+    createdAt: now,
+    updatedAt: now,
   };
 
   const chatRef = doc(db, "users", uid, "chats", id);
@@ -68,6 +71,9 @@ export async function addMessageToBranch(
   await updateDoc(branchRef, {
     messages: arrayUnion(message),
   });
+
+  // Update the chat's updatedAt timestamp
+  await updateChatTimestamp(uid, activeChatId);
 }
 
 export const getChats = async (uid: string) => {
@@ -82,6 +88,14 @@ export async function updateChatName(uid: string, chatId: string, name: string) 
   const chatRef = doc(db, "users", uid, "chats", chatId);
   await updateDoc(chatRef, {
     name: name.trim(),
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function updateChatTimestamp(uid: string, chatId: string) {
+  const chatRef = doc(db, "users", uid, "chats", chatId);
+  await updateDoc(chatRef, {
+    updatedAt: new Date().toISOString(),
   });
 }
 
