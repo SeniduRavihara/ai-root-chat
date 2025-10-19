@@ -9,9 +9,10 @@ import BranchTreeFlow from "./BranchTreeFlow";
 import ConversationView from "./ConversationView";
 import WelcomeScreen from "./WelcomeScreen";
 import {
-  createNewChat,
-  addMessageToBranch,
-  updateChatName,
+createNewChat,
+addMessageToBranch,
+updateChatName,
+  updateBranchName,
 } from "@/firebase/services/ChatService";
 
 export default function BranchingChatTree() {
@@ -192,10 +193,22 @@ export default function BranchingChatTree() {
 
   // Enhanced branch switching
   const handleBranchSwitch = (branchId: string) => {
-    setActiveBranch(branchId);
+  setActiveBranch(branchId);
+  try {
+  localStorage.setItem("activeBranchId", branchId);
+  } catch {}
+  };
+
+  // Branch renaming handler
+  const handleBranchRename = async (branchId: string, newName: string) => {
+    if (!currentUserData || !activeChatId || !newName.trim()) return;
+
     try {
-      localStorage.setItem("activeBranchId", branchId);
-    } catch {}
+      await updateBranchName(currentUserData.uid, activeChatId, branchId, newName);
+      console.log("Branch renamed successfully:", branchId, newName);
+    } catch (error) {
+      console.error("Failed to rename branch:", error);
+    }
   };
 
   // Get the full message history for a branch (including all ancestor messages)
@@ -523,6 +536,7 @@ export default function BranchingChatTree() {
             branchesData={branchesData}
             activeBranch={activeBranch}
             setActiveBranch={handleBranchSwitch}
+            onBranchRename={handleBranchRename}
             height={
             viewMode === "tree-only"
             ? "100%"
