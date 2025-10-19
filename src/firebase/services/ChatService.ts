@@ -106,6 +106,21 @@ export async function updateChatTimestamp(uid: string, chatId: string) {
  * @param uid - user id
  * @param branchData - branch object (id, name, color, parentId, parentMessageId, messages)
  */
+export async function updateBranchName(
+uid: string,
+chatId: string,
+branchId: string,
+  name: string
+) {
+const branchRef = doc(db, "users", uid, "chats", chatId, "branches", branchId);
+  await updateDoc(branchRef, {
+    name: name.trim(),
+  });
+
+  // Update the chat's updatedAt timestamp
+  await updateChatTimestamp(uid, chatId);
+}
+
 export async function createBranchForUser(
   uid: string,
   chatId: string,

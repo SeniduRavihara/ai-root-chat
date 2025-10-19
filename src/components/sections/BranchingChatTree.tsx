@@ -3,14 +3,26 @@
 import { useData } from "@/hooks/useData";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
+import { MessageCircle, GitBranch, RefreshCw } from "lucide-react";
 import BranchExplorer from "./BranchExplorer";
 import BranchTreeFlow from "./BranchTreeFlow";
 import ConversationView from "./ConversationView";
 import WelcomeScreen from "./WelcomeScreen";
-import { createNewChat, addMessageToBranch, updateChatName } from "@/firebase/services/ChatService";
+import {
+createNewChat,
+addMessageToBranch,
+updateChatName,
+  updateBranchName,
+} from "@/firebase/services/ChatService";
 
 export default function BranchingChatTree() {
-  const { currentUserData, branchesData, allChats, activeChatId, makeChatActive } = useData();
+  const {
+    currentUserData,
+    branchesData,
+    allChats,
+    activeChatId,
+    makeChatActive,
+  } = useData();
 
   const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
@@ -22,13 +34,18 @@ export default function BranchingChatTree() {
   const [renamingChats, setRenamingChats] = useState<Set<string>>(new Set());
   const [isCreatingChat, setIsCreatingChat] = useState<boolean>(false);
 
+  // View modes: 'both', 'chat-only', 'tree-only'
+  const [viewMode, setViewMode] = useState<"both" | "chat-only" | "tree-only">(
+    "both"
+  );
+
   // Functions to control renaming animation
   const startRenaming = useCallback((chatId: string) => {
-    setRenamingChats(prev => new Set(prev).add(chatId));
+    setRenamingChats((prev) => new Set(prev).add(chatId));
   }, []);
 
   const stopRenaming = useCallback((chatId: string) => {
-    setRenamingChats(prev => {
+    setRenamingChats((prev) => {
       const newSet = new Set(prev);
       newSet.delete(chatId);
       return newSet;
@@ -176,10 +193,22 @@ export default function BranchingChatTree() {
 
   // Enhanced branch switching
   const handleBranchSwitch = (branchId: string) => {
-    setActiveBranch(branchId);
+  setActiveBranch(branchId);
+  try {
+  localStorage.setItem("activeBranchId", branchId);
+  } catch {}
+  };
+
+  // Branch renaming handler
+  const handleBranchRename = async (branchId: string, newName: string) => {
+    if (!currentUserData || !activeChatId || !newName.trim()) return;
+
     try {
-      localStorage.setItem("activeBranchId", branchId);
-    } catch {}
+      await updateBranchName(currentUserData.uid, activeChatId, branchId, newName);
+      console.log("Branch renamed successfully:", branchId, newName);
+    } catch (error) {
+      console.error("Failed to rename branch:", error);
+    }
   };
 
   // Get the full message history for a branch (including all ancestor messages)
@@ -266,7 +295,10 @@ export default function BranchingChatTree() {
     setIsCreatingChat(true);
     try {
       // Create new chat
-      const newChat = await createNewChat(currentUserData.uid, "New Conversation");
+      const newChat = await createNewChat(
+        currentUserData.uid,
+        "New Conversation"
+      );
 
       // Set as active chat
       makeChatActive(newChat.id);
@@ -280,11 +312,15 @@ export default function BranchingChatTree() {
       };
 
       // Add message to main branch
-      await addMessageToBranch(currentUserData.uid, "main", userMessage, newChat.id);
+      await addMessageToBranch(
+        currentUserData.uid,
+        "main",
+        userMessage,
+        newChat.id
+      );
 
       // Now send to AI and get response
       await sendMessageToAI(userMessage, newChat.id);
-
     } catch (error) {
       console.error("Error creating chat:", error);
     } finally {
@@ -302,17 +338,22 @@ export default function BranchingChatTree() {
       const conversationHistory = branch?.messages || [];
 
       // Convert messages to the format expected by the API
-      const historyForAPI = conversationHistory.map(msg => ({
+      const historyForAPI = conversationHistory.map((msg) => ({
         role: msg.role === "assistant" ? "model" : msg.role,
-        parts: [{ text: msg.content }]
+        parts: [{ text: msg.content }],
       }));
 
-      const response = await fetch(`/api/chat2?question=${encodeURIComponent(userMessage.content)}&history=${encodeURIComponent(JSON.stringify(historyForAPI))}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `/api/chat2?question=${encodeURIComponent(
+          userMessage.content
+        )}&history=${encodeURIComponent(JSON.stringify(historyForAPI))}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to get AI response");
@@ -332,31 +373,45 @@ export default function BranchingChatTree() {
       await addMessageToBranch(currentUserData.uid, "main", aiMessage, chatId);
 
       // Generate conversation name
-      await generateConversationName(userMessage.content, aiMessage.content, chatId);
-
+      await generateConversationName(
+        userMessage.content,
+        aiMessage.content,
+        chatId
+      );
     } catch (error) {
       console.error("Error sending message to AI:", error);
     }
   };
 
   // Generate conversation name using AI
-  const generateConversationName = async (userMessage: string, aiResponse: string, chatId: string) => {
+  const generateConversationName = async (
+    userMessage: string,
+    aiResponse: string,
+    chatId: string
+  ) => {
     // Check if chat has already been auto-renamed
-    const currentChat = allChats?.find(chat => chat.id === chatId);
+    const currentChat = allChats?.find((chat) => chat.id === chatId);
     if (currentChat?.autoRenamed) {
       console.log("⏭️ Chat already auto-renamed, skipping:", chatId);
       return;
     }
 
     try {
-      const namingPrompt = `User: ${userMessage.substring(0, 200)}${userMessage.length > 200 ? '...' : ''}\n\nAssistant: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''}`;
+      const namingPrompt = `User: ${userMessage.substring(0, 200)}${
+        userMessage.length > 200 ? "..." : ""
+      }\n\nAssistant: ${aiResponse.substring(0, 200)}${
+        aiResponse.length > 200 ? "..." : ""
+      }`;
 
-      const response = await fetch(`/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to generate conversation name");
@@ -367,8 +422,8 @@ export default function BranchingChatTree() {
 
       // Clean up the suggested name (remove quotes, extra spaces, etc.)
       const cleanName = suggestedName
-        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-        .replace(/\s+/g, ' ') // Normalize spaces
+        .replace(/^["']|["']$/g, "") // Remove surrounding quotes
+        .replace(/\s+/g, " ") // Normalize spaces
         .trim();
 
       // Update chat name in Firestore
@@ -376,7 +431,6 @@ export default function BranchingChatTree() {
         await updateChatName(currentUserData.uid, chatId, cleanName);
         console.log("Chat renamed to:", cleanName);
       }
-
     } catch (error) {
       console.error("Error generating conversation name:", error);
     }
@@ -402,6 +456,45 @@ export default function BranchingChatTree() {
       ref={containerRef}
       className="relative flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden"
     >
+      {/* Mode Selector - Top Right Corner */}
+      <div className="absolute top-4 right-4 z-50 flex items-center space-x-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 flex">
+          <button
+            onClick={() => setViewMode("chat-only")}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center ${
+              viewMode === "chat-only"
+                ? "bg-blue-500 text-white shadow-md"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+            title="Chat Only Mode"
+          >
+            <MessageCircle size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode("tree-only")}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center ${
+              viewMode === "tree-only"
+                ? "bg-blue-500 text-white shadow-md"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+            title="Tree Only Mode"
+          >
+            <GitBranch size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode("both")}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center ${
+              viewMode === "both"
+                ? "bg-blue-500 text-white shadow-md"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+            title="Both Views Mode"
+          >
+            <RefreshCw size={16} />
+          </button>
+        </div>
+      </div>
+
       {/* Left Sidebar - Full Height */}
       <BranchExplorer
         sidebarOpen={sidebarOpen}
@@ -423,52 +516,73 @@ export default function BranchingChatTree() {
           sidebarOpen ? "ml-80" : "ml-0"
         }`}
       >
-        {/* Resizable Branch Tree Visualization */}
-        <div
-          className="relative border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
-          style={{
-            height: `${treeViewHeight}px`,
-            minHeight: `${MIN_HEIGHT}px`,
-          }}
-        >
-          {/* Switchable: ReactFlow-based layout to avoid overlaps */}
-          <BranchTreeFlow
+        {/* Conditionally render tree view based on mode */}
+        {(viewMode === "both" || viewMode === "tree-only") && (
+          <div
+          className={`relative ${
+          viewMode === "tree-only" ? "flex-1" : ""
+          } ${viewMode === "both" ? "border-b border-gray-200 dark:border-gray-800" : ""} bg-white dark:bg-gray-900`}
+          style={
+          viewMode === "both"
+          ? {
+          height: `${treeViewHeight}px`,
+          minHeight: `${MIN_HEIGHT}px`,
+          }
+          : { height: "100%" }
+          }
+          >
+            {/* Switchable: ReactFlow-based layout to avoid overlaps */}
+            <BranchTreeFlow
             branchesData={branchesData}
             activeBranch={activeBranch}
             setActiveBranch={handleBranchSwitch}
-            height={treeViewHeight - 0}
-          />
+            onBranchRename={handleBranchRename}
+            height={
+            viewMode === "tree-only"
+            ? "100%"
+            : treeViewHeight - 0
+            }
+            />
 
-          {/* Resize Handle */}
-          <div
-            ref={resizeRef}
-            className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
-              bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            style={{ cursor: "row-resize" }}
-          >
-            {/* Visible separator line */}
-            <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
-            {/* Drag indicator */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
-            {/* Tooltip */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
-              Drag to resize tree view
-            </div>
+            {/* Resize Handle - Only show in both mode */}
+            {viewMode === "both" && (
+              <div
+                ref={resizeRef}
+                className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
+                  bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                style={{ cursor: "row-resize" }}
+              >
+                {/* Visible separator line */}
+                <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
+                {/* Drag indicator */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
+                {/* Tooltip */}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
+                  Drag to resize tree view
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Conversation View - Takes remaining height */}
-        <div className="flex-1 overflow-auto">
-          <ConversationView
-            activeBranch={activeBranch}
-            getBranchMessages={getBranchMessages}
-            branchesData={branchesData}
-            onRenamingStart={startRenaming}
-            onRenamingEnd={stopRenaming}
-          />
-        </div>
+        {/* Conditionally render chat view based on mode */}
+        {(viewMode === "both" || viewMode === "chat-only") && (
+          <div
+            className={`flex-1 overflow-auto ${
+              viewMode === "chat-only" ? "h-full" : ""
+            }`}
+          >
+            <ConversationView
+              activeBranch={activeBranch}
+              getBranchMessages={getBranchMessages}
+              branchesData={branchesData}
+              onRenamingStart={startRenaming}
+              onRenamingEnd={stopRenaming}
+            />
+          </div>
+        )}
       </div>
 
       {/* Add CSS for global animations and resize cursor */}

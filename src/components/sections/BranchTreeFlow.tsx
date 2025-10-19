@@ -30,7 +30,8 @@ type Props = {
   branchesData: Record<string, BranchWithMessages>;
   activeBranch: string;
   setActiveBranch: (id: string) => void;
-  height: number;
+  onBranchRename: (branchId: string, newName: string) => void;
+  height: number | string;
 };
 
 const nodeWidth = 200;
@@ -44,6 +45,7 @@ export default function BranchTreeFlow({
   branchesData,
   activeBranch,
   setActiveBranch,
+  onBranchRename,
   height,
 }: Props) {
   const [reactFlowKey, setReactFlowKey] = useState<string>("");
