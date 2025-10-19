@@ -12,6 +12,7 @@ import TypingIndicator from "../conversation-view/TypingIndicator";
 import {
   addMessageToBranch,
   createBranchForUser,
+  updateChatName,
 } from "@/firebase/services/ChatService";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
@@ -37,6 +38,7 @@ export default function ConversationView({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
 
   const isNearBottom = () => {
     const el = messagesContainerRef.current;
@@ -103,6 +105,27 @@ export default function ConversationView({
       setShouldScrollToBottom(false);
     }
   }, [allMessages, shouldScrollToBottom]);
+
+  // Watch for message count changes to trigger auto-naming
+  useEffect(() => {
+    const currentBranch = branchesData[activeBranch];
+    const currentMessageCount = currentBranch?.messages?.length || 0;
+
+    // If message count just reached 2 (first user + assistant exchange)
+    if (currentMessageCount === 2 && lastMessageCount !== 2) {
+      console.log("🎯 Message count reached 2! Triggering auto-naming...");
+      const messages = currentBranch?.messages || [];
+      if (messages.length >= 2) {
+        const userMsg = messages.find(m => m.role === 'user');
+        const aiMsg = messages.find(m => m.role === 'assistant');
+        if (userMsg && aiMsg) {
+          generateConversationName(userMsg.content, aiMsg.content, activeChatId);
+        }
+      }
+    }
+
+    setLastMessageCount(currentMessageCount);
+  }, [branchesData, activeBranch, activeChatId, lastMessageCount]);
 
   // Helper to generate a random color
   function getRandomColor() {
@@ -221,6 +244,54 @@ export default function ConversationView({
 
     setIsTyping(false);
     setShouldScrollToBottom(true);
+  };
+
+  // Generate conversation name using AI
+  const generateConversationName = async (userMessage: string, aiResponse: string, chatId: string) => {
+    console.log("🎯 Starting conversation naming for chat:", chatId);
+    try {
+      const namingPrompt = `User: ${userMessage.substring(0, 200)}${userMessage.length > 200 ? '...' : ''}\n\nAssistant: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''}`;
+
+      console.log("📡 Calling naming API...");
+      const response = await fetch(`/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Naming API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const suggestedName = data.answer?.trim() || "New Conversation";
+      console.log("🤖 AI suggested name:", suggestedName);
+
+      // Clean up the suggested name (remove quotes, extra spaces, etc.)
+      const cleanName = suggestedName
+        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim();
+
+      console.log("✨ Cleaned name:", cleanName);
+
+      // Update chat name in Firestore
+      if (currentUserData && cleanName && cleanName !== "New Conversation") {
+        console.log("💾 Updating chat name in Firestore...");
+        await updateChatName(currentUserData.uid, chatId, cleanName);
+        console.log("✅ Chat renamed to:", cleanName);
+      } else {
+        console.log("⚠️ Skipping update - conditions not met", {
+          hasUserData: !!currentUserData,
+          cleanName,
+          isDifferent: cleanName !== "New Conversation"
+        });
+      }
+
+    } catch (error) {
+      console.error("❌ Error generating conversation name:", error);
+    }
   };
 
   // Branch creation handler

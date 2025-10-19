@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       parts: [
         {
           text:
-            "You are an assistant. give the result with markdown styles to impress and equations in math answers",
+            "DON'T WASTE TOKENS - Keep responses concise but helpful. You are an assistant. give the result with markdown styles to impress and equations in math answers",
         },
       ],
     };

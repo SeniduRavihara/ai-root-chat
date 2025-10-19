@@ -78,6 +78,13 @@ export const getChats = async (uid: string) => {
   return chats.docs.map((doc) => doc.data());
 };
 
+export async function updateChatName(uid: string, chatId: string, name: string) {
+  const chatRef = doc(db, "users", uid, "chats", chatId);
+  await updateDoc(chatRef, {
+    name: name.trim(),
+  });
+}
+
 
 /**
  * Create a new branch for a user in Firestore
