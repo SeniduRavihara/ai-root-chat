@@ -4,11 +4,10 @@ import { useData } from "@/hooks/useData";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { BranchWithMessages, Message } from "../../types";
+import { BranchWithMessages, Message } from "@/types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
-// Markdown and math imports
 import {
   addMessageToBranch,
   createBranchForUser,
@@ -24,15 +23,11 @@ interface ConversationViewProps {
   activeBranch: string;
   getBranchMessages: (branchId: string) => Message[];
   branchesData: Record<string, BranchWithMessages>;
-  onRenamingStart?: (chatId: string) => void;
-  onRenamingEnd?: (chatId: string) => void;
 }
 
 export default function ConversationView({
   activeBranch,
   getBranchMessages,
-  onRenamingStart,
-  onRenamingEnd,
 }: ConversationViewProps) {
   const { setBranchesData, branchesData, currentUserData, activeChatId, allChats } =
     useData();
@@ -55,67 +50,23 @@ export default function ConversationView({
     messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   };
 
-  // Get messages from the active branch
-  const getMessages = (): Message[] => {
-    const branchMessages = getBranchMessages(activeBranch);
-    return branchMessages;
-  };
-
-  const allMessages = getMessages();
-
-  // Format timestamp to readable string
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Determine which branch a message belongs to directly (not via inheritance)
-  const getMessageBranchId = (messageId: string): string | null => {
-    for (const branchId in branchesData) {
-      const branch = branchesData[branchId];
-      if (branch.messages.some((msg) => msg.id === messageId)) {
-        return branchId;
-      }
-    }
-    return null;
-  };
-
-  // Check if a message is from the currently active branch (directly, not inherited)
-  const isMessageFromActiveBranch = (messageId: string): boolean => {
-    return (
-      branchesData[activeBranch]?.messages.some(
-        (msg) => msg.id === messageId
-      ) || false
-    );
-  };
-
-  // Find the branch that a message belongs to
-  const getMessageBranch = (messageId: string): BranchWithMessages | null => {
-    const branchId = getMessageBranchId(messageId);
-    return branchId ? branchesData[branchId] : null;
-  };
-
-  // Auto scroll when switching branches/chats
-  useEffect(() => {
-    scrollToBottom("auto");
-  }, [activeBranch]);
-
-  // Smooth scroll on new messages or when requested
   useEffect(() => {
     if (shouldScrollToBottom || isNearBottom()) {
       scrollToBottom("smooth");
       setShouldScrollToBottom(false);
     }
-  }, [allMessages, shouldScrollToBottom]);
+  }, [shouldScrollToBottom]);
 
   // Generate conversation name using AI
   const generateConversationName = useCallback(async (userMessage: string, aiResponse: string, chatId: string) => {
     console.log("🎯 Starting conversation naming for chat:", chatId);
 
-    // Start renaming animation
-    onRenamingStart?.(chatId);
+    // Check if chat has already been auto-renamed
+    const currentChat = allChats?.find(chat => chat.id === chatId);
+    if (currentChat?.autoRenamed) {
+      console.log("⏭️ Chat already auto-renamed, skipping:", chatId);
+      return;
+    }
 
     try {
       const namingPrompt = `User: ${userMessage.substring(0, 200)}${userMessage.length > 200 ? '...' : ''}\n\nAssistant: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''}`;
@@ -159,11 +110,8 @@ export default function ConversationView({
 
     } catch (error) {
       console.error("❌ Error generating conversation name:", error);
-    } finally {
-      // Stop renaming animation
-      onRenamingEnd?.(chatId);
     }
-  }, [currentUserData, onRenamingStart, onRenamingEnd]);
+  }, [currentUserData, allChats]);
 
   // Watch for message count changes to trigger auto-naming
   useEffect(() => {
@@ -261,7 +209,7 @@ export default function ConversationView({
       body: JSON.stringify({
         question: message,
         // Gemini expects history as an array of {role, parts: [{text}]}
-        history: allMessages.map((msg) => ({
+        history: getBranchMessages(activeBranch).map((msg) => ({
           role: msg.role === "assistant" ? "model" : "user",
           parts: [{ text: msg.content }],
         })),
@@ -281,7 +229,7 @@ export default function ConversationView({
       branchId: activeBranch,
     };
 
-    // // Add the assistant's reply to the branch
+    // Add the assistant's reply to the branch
     setBranchesData((prev: Record<string, BranchWithMessages>) => {
       const existingBranch = prev?.[activeBranch] ?? {
         id: activeBranch,
@@ -307,6 +255,16 @@ export default function ConversationView({
       assistantMessageObj,
       activeChatId
     );
+
+    // Check if this is the first message exchange (user + assistant = 2 messages)
+    const currentBranch = branchesData[activeBranch];
+    const totalMessages = currentBranch?.messages?.length || 0;
+
+    // If we just added the assistant message and there are exactly 2 messages, it's the first exchange
+    if (totalMessages === 2) {
+      // Trigger automatic chat naming
+      generateConversationName(userMessage.content, assistantMessage, activeChatId);
+    }
 
     setIsTyping(false);
     setShouldScrollToBottom(true);
@@ -345,6 +303,16 @@ export default function ConversationView({
     });
   };
 
+  const allMessages = getBranchMessages(activeBranch);
+
+  // Format timestamp to readable string
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Branch header */}
@@ -357,206 +325,137 @@ export default function ConversationView({
       >
         {allMessages.map((message, index) => {
           // Determine if this message is from the active branch or inherited
-          const isFromCurrentBranch = isMessageFromActiveBranch(message.id);
-          const messageBranch = getMessageBranch(message.id);
-
-          // Check if this message is a branch point
-          const hasBranches = Object.values(branchesData).some(
-            (branch) => branch.parentMessageId === message.id
-          );
-
-          // Find branches that fork from this message
-          const forkingBranches = Object.values(branchesData).filter(
-            (branch) => branch.parentMessageId === message.id
-          );
+          const isFromCurrentBranch = true; // Simplified for now
+          const messageBranch = branchesData[activeBranch];
+          const hasBranches = false; // Simplified for now
+          const forkingBranches = [];
 
           return (
-            <div key={message.id} className="space-y-2">
-              {/* Branch transition indicator */}
-              {index > 0 &&
-                (() => {
-                  const prevMessageBranchId = getMessageBranchId(
-                    allMessages[index - 1].id
-                  );
-                  const currentMessageBranchId = getMessageBranchId(message.id);
-
-                  if (
-                    prevMessageBranchId &&
-                    currentMessageBranchId &&
-                    prevMessageBranchId !== currentMessageBranchId
-                  ) {
-                    const currentBranch = branchesData[currentMessageBranchId];
-
-                    return (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="w-full max-w-xs flex items-center">
-                          <div className="flex-grow h-px bg-gray-300 dark:bg-gray-700"></div>
-                          <div
-                            className="px-4 py-1 text-xs rounded-full flex items-center mx-2"
-                            style={{
-                              backgroundColor: `${currentBranch.color}20`,
-                              color: currentBranch.color,
-                            }}
-                          >
-                            <GitBranch size={12} className="mr-1" />
-                            {currentBranch.name} branch begins
-                          </div>
-                          <div className="flex-grow h-px bg-gray-300 dark:bg-gray-700"></div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
+            <div key={message.id}>
               <div
                 className={`flex ${
                   message.role === "user" ? "justify-end" : "justify-start"
-                } mb-3`}
+                } mb-6`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg ${
+                  className={`${
                     message.role === "user"
-                      ? "bg-blue-500 text-white"
-                      : !isFromCurrentBranch
-                      ? "bg-white dark:bg-gray-900 border-l-2 shadow-sm"
-                      : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm"
+                      ? "max-w-[85%] rounded-2xl bg-blue-500 text-white shadow-lg"
+                      : "w-full max-w-none"
+                  } ${
+                    message.role === "assistant" && !isFromCurrentBranch
+                      ? "border-l-4 shadow-sm"
+                      : ""
                   }`}
                   style={
-                    !isFromCurrentBranch && messageBranch
+                    message.role === "assistant" && !isFromCurrentBranch && messageBranch
                       ? {
                           borderLeftColor: messageBranch.color,
                         }
                       : {}
                   }
                 >
-                  <div className="flex items-center justify-between p-3 pb-2">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                        message.role === "user"
-                          ? "bg-blue-600"
-                          : "bg-gray-100 dark:bg-gray-800"
-                      }`}
-                    >
-                      {message.role === "user" ? (
-                        <User size={12} className="text-white" />
-                      ) : (
-                        <Bot
-                          size={12}
-                          className="text-gray-700 dark:text-gray-300"
-                        />
-                      )}
+                  {/* User message styling - compact card */}
+                  {message.role === "user" ? (
+                    <div className="p-4">
+                      <p className="text-sm leading-relaxed">{message.content}</p>
                     </div>
-                    <span
-                      className={`ml-2 text-xs ${
-                        message.role === "user"
-                          ? "text-blue-100"
-                          : "text-gray-500 dark:text-gray-400"
-                      }`}
-                    >
-                      {message.role === "user" ? "You" : "Assistant"}
-                    </span>
-                    {!isFromCurrentBranch && messageBranch && (
-                      <span
-                        className="ml-2 text-xs px-1.5 py-0.5 rounded-full text-gray-600 dark:text-gray-300"
-                        style={{
-                          backgroundColor: `${messageBranch.color}20`,
-                          color: messageBranch.color,
-                        }}
-                      >
-                        {messageBranch.name}
-                      </span>
-                    )}
-
-                    <div className="flex items-center space-x-2">
-                      <span
-                        className={`text-xs ${
-                          message.role === "user"
-                            ? "text-blue-100"
-                            : "text-gray-500 dark:text-gray-400"
-                        }`}
-                      >
-                        {formatTime(message.timestamp)}
-                      </span>
-                      {message.role === "assistant" && (
-                        <button
-                          className="text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
-                          onClick={() =>
-                            handleCreateBranch(
-                              getMessageBranchId(message.id)!,
-                              message.id
-                            )
-                          }
-                        >
-                          <GitFork size={10} className="mr-1" /> Branch
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="px-3 pb-3">
-                    <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-code:bg-slate-200 dark:prose-code:bg-slate-700 prose-pre:bg-slate-100 dark:prose-pre:bg-slate-800">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={{
-                          code({
-                          className,
-                          children,
-                          ...props
-                          }) {
-                          const isCodeBlock = className && className.startsWith('language-');
-                            return isCodeBlock ? (
-                            <pre className="overflow-x-auto rounded-lg bg-slate-800 p-4 text-slate-100">
-                            <code className={className} {...props}>
-                                {children}
-                              </code>
-                          </pre>
-                          ) : (
-                          <code
-                          className={`${className} rounded bg-slate-200 px-1 py-0.5 text-sm dark:bg-slate-700`}
-                            {...props}
+                  ) : (
+                    /* AI message styling - spacious, full-width */
+                    <div className="px-6 py-8">
+                      <div className="flex items-start space-x-4">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+                          <Bot size={16} className="text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {/* AI Message Content */}
+                          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                              components={{
+                                code({
+                                  className,
+                                  children,
+                                  ...props
+                                }) {
+                                  const isCodeBlock = className && className.startsWith('language-');
+                                  return isCodeBlock ? (
+                                    <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
+                                      <code className={className} {...props}>
+                                        {children}
+                                      </code>
+                                    </pre>
+                                  ) : (
+                                    <code
+                                      className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
+                                      {...props}
+                                    >
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                                table({ children }) {
+                                  return (
+                                    <div className="overflow-x-auto my-4">
+                                      <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  );
+                                },
+                                th({ children }) {
+                                  return (
+                                    <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-left font-medium dark:border-gray-600 dark:bg-gray-700">
+                                      {children}
+                                    </th>
+                                  );
+                                },
+                                td({ children }) {
+                                  return (
+                                    <td className="border border-gray-300 px-4 py-2 dark:border-gray-600">
+                                      {children}
+                                    </td>
+                                  );
+                                },
+                                blockquote({ children }) {
+                                  return (
+                                    <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
+                                      {children}
+                                    </blockquote>
+                                  );
+                                }
+                              }}
                             >
-                            {children}
-                          </code>
-                          );
-                          },
-                          table({ children }) {
-                            return (
-                              <div className="overflow-x-auto">
-                                <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-600">
-                                  {children}
-                                </table>
+                              {message.content}
+                            </ReactMarkdown>
+
+                            {/* Branch button and timestamp */}
+                            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <div className="flex items-center space-x-2">
+                                {message.role === "assistant" && (
+                                  <button
+                                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
+                                    onClick={() =>
+                                      handleCreateBranch(
+                                        activeBranch,
+                                        message.id
+                                      )
+                                    }
+                                  >
+                                    <GitFork size={12} className="mr-1.5" /> Create Branch
+                                  </button>
+                                )}
                               </div>
-                            );
-                          },
-                          th({ children }) {
-                            return (
-                              <th className="border border-slate-300 bg-slate-50 px-4 py-2 text-left font-medium dark:border-slate-600 dark:bg-slate-700">
-                                {children}
-                              </th>
-                            );
-                          },
-                          td({ children }) {
-                            return (
-                              <td className="border border-slate-300 px-4 py-2 dark:border-slate-600">
-                                {children}
-                              </td>
-                            );
-                          },
-                          blockquote({ children }) {
-                            return (
-                              <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic dark:bg-blue-900/20">
-                                {children}
-                              </blockquote>
-                            );
-                          },
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatTime(message.timestamp)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
