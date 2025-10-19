@@ -506,28 +506,28 @@ export default function BranchingChatTree() {
         {/* Conditionally render tree view based on mode */}
         {(viewMode === "both" || viewMode === "tree-only") && (
           <div
-            className={`relative ${
-              viewMode === "tree-only" ? "flex-1" : ""
-            } border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900`}
-            style={
-              viewMode === "both"
-                ? {
-                    height: `${treeViewHeight}px`,
-                    minHeight: `${MIN_HEIGHT}px`,
-                  }
-                : undefined
-            }
+          className={`relative ${
+          viewMode === "tree-only" ? "flex-1" : ""
+          } ${viewMode === "both" ? "border-b border-gray-200 dark:border-gray-800" : ""} bg-white dark:bg-gray-900`}
+          style={
+          viewMode === "both"
+          ? {
+          height: `${treeViewHeight}px`,
+          minHeight: `${MIN_HEIGHT}px`,
+          }
+          : { height: "100%" }
+          }
           >
             {/* Switchable: ReactFlow-based layout to avoid overlaps */}
             <BranchTreeFlow
-              branchesData={branchesData}
-              activeBranch={activeBranch}
-              setActiveBranch={handleBranchSwitch}
-              height={
-                viewMode === "tree-only"
-                  ? windowHeight - 100
-                  : treeViewHeight - 0
-              }
+            branchesData={branchesData}
+            activeBranch={activeBranch}
+            setActiveBranch={handleBranchSwitch}
+            height={
+            viewMode === "tree-only"
+            ? "100%"
+            : treeViewHeight - 0
+            }
             />
 
             {/* Resize Handle - Only show in both mode */}
