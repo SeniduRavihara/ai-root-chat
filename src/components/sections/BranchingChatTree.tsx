@@ -341,6 +341,13 @@ export default function BranchingChatTree() {
 
   // Generate conversation name using AI
   const generateConversationName = async (userMessage: string, aiResponse: string, chatId: string) => {
+    // Check if chat has already been auto-renamed
+    const currentChat = allChats?.find(chat => chat.id === chatId);
+    if (currentChat?.autoRenamed) {
+      console.log("⏭️ Chat already auto-renamed, skipping:", chatId);
+      return;
+    }
+
     try {
       const namingPrompt = `User: ${userMessage.substring(0, 200)}${userMessage.length > 200 ? '...' : ''}\n\nAssistant: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''}`;
 

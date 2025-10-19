@@ -34,7 +34,7 @@ export default function ConversationView({
   onRenamingStart,
   onRenamingEnd,
 }: ConversationViewProps) {
-  const { setBranchesData, branchesData, currentUserData, activeChatId } =
+  const { setBranchesData, branchesData, currentUserData, activeChatId, allChats } =
     useData();
 
   const [message, setMessage] = useState<string>("");
@@ -172,19 +172,26 @@ export default function ConversationView({
 
     // If message count just reached 2 (first user + assistant exchange)
     if (currentMessageCount === 2 && lastMessageCount !== 2 && activeChatId) {
-      console.log("🎯 Message count reached 2! Triggering auto-naming...");
-      const messages = currentBranch?.messages || [];
-      if (messages.length >= 2) {
-        const userMsg = messages.find(m => m.role === 'user');
-        const aiMsg = messages.find(m => m.role === 'assistant');
-        if (userMsg && aiMsg) {
-          generateConversationName(userMsg.content, aiMsg.content, activeChatId);
+      // Check if chat has already been auto-renamed
+      const currentChat = allChats?.find(chat => chat.id === activeChatId);
+
+      if (currentChat?.autoRenamed) {
+        console.log("⏭️ Chat already auto-renamed, skipping:", activeChatId);
+      } else {
+        console.log("🎯 Message count reached 2! Triggering auto-naming...");
+        const messages = currentBranch?.messages || [];
+        if (messages.length >= 2) {
+          const userMsg = messages.find(m => m.role === 'user');
+          const aiMsg = messages.find(m => m.role === 'assistant');
+          if (userMsg && aiMsg) {
+            generateConversationName(userMsg.content, aiMsg.content, activeChatId);
+          }
         }
       }
     }
 
     setLastMessageCount(currentMessageCount);
-  }, [branchesData, activeBranch, activeChatId, lastMessageCount, generateConversationName]);
+  }, [branchesData, activeBranch, activeChatId, lastMessageCount, generateConversationName, allChats]);
 
   // Helper to generate a random color
   function getRandomColor() {

@@ -89,6 +89,7 @@ export async function updateChatName(uid: string, chatId: string, name: string) 
   await updateDoc(chatRef, {
     name: name.trim(),
     updatedAt: new Date().toISOString(),
+    autoRenamed: true,
   });
 }
 
