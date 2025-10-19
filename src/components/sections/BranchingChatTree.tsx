@@ -1,14 +1,16 @@
 "use client";
 
 import { useData } from "@/hooks/useData";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import BranchTreeFlow from "./BranchTreeFlow";
 import ConversationView from "./ConversationView";
+import WelcomeScreen from "./WelcomeScreen";
+import { createNewChat, addMessageToBranch, updateChatName } from "@/firebase/services/ChatService";
 
 export default function BranchingChatTree() {
-  const { currentUserData, branchesData } = useData();
+  const { currentUserData, branchesData, allChats, activeChatId, makeChatActive } = useData();
 
   const [activeBranch, setActiveBranch] = useState<string>("main");
   const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
@@ -17,6 +19,21 @@ export default function BranchingChatTree() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [renamingChats, setRenamingChats] = useState<Set<string>>(new Set());
+  const [isCreatingChat, setIsCreatingChat] = useState<boolean>(false);
+
+  // Functions to control renaming animation
+  const startRenaming = useCallback((chatId: string) => {
+    setRenamingChats(prev => new Set(prev).add(chatId));
+  }, []);
+
+  const stopRenaming = useCallback((chatId: string) => {
+    setRenamingChats(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(chatId);
+      return newSet;
+    });
+  }, []);
 
   // Ref for the resize handle
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -239,6 +256,147 @@ export default function BranchingChatTree() {
       .includes((searchQuery ?? "").toLowerCase())
   );
 
+  // Check if there are any chats
+  const hasChats = allChats && allChats.length > 0;
+
+  // Handle sending first message from welcome screen
+  const handleWelcomeMessage = async (message: string) => {
+    if (!currentUserData || isCreatingChat) return;
+
+    setIsCreatingChat(true);
+    try {
+      // Create new chat
+      const newChat = await createNewChat(currentUserData.uid, "New Conversation");
+
+      // Set as active chat
+      makeChatActive(newChat.id);
+
+      // Create user message
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: message,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add message to main branch
+      await addMessageToBranch(currentUserData.uid, "main", userMessage, newChat.id);
+
+      // Now send to AI and get response
+      await sendMessageToAI(userMessage, newChat.id);
+
+    } catch (error) {
+      console.error("Error creating chat:", error);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
+
+  // Send message to AI and handle response
+  const sendMessageToAI = async (userMessage: Message, chatId: string) => {
+    if (!currentUserData) return;
+
+    try {
+      // Get conversation history from the branch
+      const branch = branchesData["main"];
+      const conversationHistory = branch?.messages || [];
+
+      // Convert messages to the format expected by the API
+      const historyForAPI = conversationHistory.map(msg => ({
+        role: msg.role === "assistant" ? "model" : msg.role,
+        parts: [{ text: msg.content }]
+      }));
+
+      const response = await fetch(`/api/chat2?question=${encodeURIComponent(userMessage.content)}&history=${encodeURIComponent(JSON.stringify(historyForAPI))}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response");
+      }
+
+      const data = await response.json();
+
+      // Create AI response message
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.answer || "I couldn't generate a response.",
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add AI response to branch
+      await addMessageToBranch(currentUserData.uid, "main", aiMessage, chatId);
+
+      // Generate conversation name
+      await generateConversationName(userMessage.content, aiMessage.content, chatId);
+
+    } catch (error) {
+      console.error("Error sending message to AI:", error);
+    }
+  };
+
+  // Generate conversation name using AI
+  const generateConversationName = async (userMessage: string, aiResponse: string, chatId: string) => {
+    // Check if chat has already been auto-renamed
+    const currentChat = allChats?.find(chat => chat.id === chatId);
+    if (currentChat?.autoRenamed) {
+      console.log("⏭️ Chat already auto-renamed, skipping:", chatId);
+      return;
+    }
+
+    try {
+      const namingPrompt = `User: ${userMessage.substring(0, 200)}${userMessage.length > 200 ? '...' : ''}\n\nAssistant: ${aiResponse.substring(0, 200)}${aiResponse.length > 200 ? '...' : ''}`;
+
+      const response = await fetch(`/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate conversation name");
+      }
+
+      const data = await response.json();
+      const suggestedName = data.answer?.trim() || "New Conversation";
+
+      // Clean up the suggested name (remove quotes, extra spaces, etc.)
+      const cleanName = suggestedName
+        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim();
+
+      // Update chat name in Firestore
+      if (currentUserData && cleanName && cleanName !== "New Conversation") {
+        await updateChatName(currentUserData.uid, chatId, cleanName);
+        console.log("Chat renamed to:", cleanName);
+      }
+
+    } catch (error) {
+      console.error("Error generating conversation name:", error);
+    }
+  };
+
+  // Show welcome screen if no chats exist
+  if (!hasChats) {
+    return (
+      <div
+        ref={containerRef}
+        className="relative flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden"
+      >
+        <WelcomeScreen
+          onSendMessage={handleWelcomeMessage}
+          isLoading={isCreatingChat}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -254,6 +412,9 @@ export default function BranchingChatTree() {
         setSearchQuery={setSearchQuery}
         filteredBranches={filteredBranches}
         branchesData={branchesData}
+        renamingChats={renamingChats}
+        onRenamingStart={startRenaming}
+        onRenamingEnd={stopRenaming}
       />
 
       {/* Right Content Area - Responsive to sidebar state */}
@@ -304,6 +465,8 @@ export default function BranchingChatTree() {
             activeBranch={activeBranch}
             getBranchMessages={getBranchMessages}
             branchesData={branchesData}
+            onRenamingStart={startRenaming}
+            onRenamingEnd={stopRenaming}
           />
         </div>
       </div>

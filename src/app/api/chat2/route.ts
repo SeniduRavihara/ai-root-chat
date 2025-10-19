@@ -56,13 +56,44 @@ export async function GET(request: Request) {
     }
   }
 
+  // Check if this is a naming request
+  const isNamingRequest = searchParams.get("type") === "naming";
+
   // Add the current user message to the history
   const currentMessage = {
     role: "user",
     parts: [{ text: question }],
   };
 
-  const fullHistory = [...history, currentMessage];
+  let fullHistory;
+  if (isNamingRequest) {
+    // For naming, use a special system prompt
+    fullHistory = [
+      {
+        role: "user",
+        parts: [{
+          text: `DON'T WASTE TOKENS - Keep responses extremely brief. You are a helpful assistant that suggests very short, descriptive names for conversations. Given a conversation snippet, respond with ONLY a name (max 5 words) that best describes the conversation topic. Do not include any explanation or extra text.
+
+${question}`
+        }],
+      }
+    ];
+  } else {
+    // Add system prompt for regular chat
+    const systemMessage = {
+      role: "user",
+      parts: [{
+        text: "DON'T WASTE TOKENS - Keep responses concise but helpful. You are an assistant. give the result with markdown styles to impress and equations in math answers"
+      }],
+    };
+
+    // Check if system message already exists
+    const hasSystemMessage = history.length > 0 && history[0]?.parts?.[0]?.text?.includes("DON'T WASTE TOKENS");
+
+    fullHistory = hasSystemMessage
+      ? [...history, currentMessage]
+      : [systemMessage, ...history, currentMessage];
+  }
 
   const response = await gemi.models.generateContent({
     model: "gemini-2.0-flash",
@@ -71,16 +102,18 @@ export async function GET(request: Request) {
 
   const answer = response.text || "No response generated.";
 
-  // Add assistant's reply to history for next round
-  fullHistory.push({
-    role: "model",
-    parts: [{ text: answer }],
-  });
+  if (!isNamingRequest) {
+    // Add assistant's reply to history for next round (only for regular chat)
+    fullHistory.push({
+      role: "model",
+      parts: [{ text: answer }],
+    });
+  }
 
   return new Response(
     JSON.stringify({
       answer,
-      history: fullHistory, // Return updated history for reuse
+      history: isNamingRequest ? null : fullHistory, // Don't return history for naming requests
     }),
     {
       status: 200,

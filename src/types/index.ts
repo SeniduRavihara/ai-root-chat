@@ -87,4 +87,7 @@ export type Chat = {
   name: string;
   color: string;
   messages: Message[];
+  createdAt: string;
+  updatedAt: string;
+  autoRenamed?: boolean;
 };

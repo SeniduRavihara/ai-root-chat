@@ -121,6 +121,7 @@ const DataContextProvider = ({ children }: { children: React.ReactNode }) => {
           ...doc.data(),
           id: doc.id,
         })) as Array<Chat>;
+        console.log("📋 Chats updated from Firestore:", chatsArr.map(c => ({ id: c.id, name: c.name })));
         setAllChats(chatsArr);
         setIsChatsLoading(false);
       },
