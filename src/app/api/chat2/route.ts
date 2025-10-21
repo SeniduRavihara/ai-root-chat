@@ -1,9 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const gemi = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
 // export async function GET(request: Request) {
 //   const { searchParams } = new URL(request.url);
 //   const question = searchParams.get("question");
@@ -31,15 +27,27 @@ const gemi = new GoogleGenAI({
 // }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const question = searchParams.get("question");
+const { searchParams } = new URL(request.url);
+const question = searchParams.get("question");
+  const apiKey = searchParams.get("apiKey") || process.env.GEMINI_API_KEY;
 
-  if (!question) {
-    return new Response(JSON.stringify({ error: "Missing question" }), {
+if (!question) {
+return new Response(JSON.stringify({ error: "Missing question" }), {
+status: 400,
+  headers: { "Content-Type": "application/json" },
+  });
+  }
+
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: "API key required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  const gemi = new GoogleGenAI({
+    apiKey: apiKey,
+  });
 
   // Optional: Get previous history as JSON string
   const historyParam = searchParams.get("history");

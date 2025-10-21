@@ -1,6 +1,7 @@
 "use client";
 
 import { useData } from "@/hooks/useData";
+import TextSelectionTooltip from "@/components/ui/TextSelectionTooltip";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
@@ -9,8 +10,9 @@ import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
 import {
-  addMessageToBranch,
-  createBranchForUser,
+addMessageToBranch,
+createBranchForUser,
+updateBranchName,
   updateChatName,
 } from "@/firebase/services/ChatService";
 import "katex/dist/katex.min.css";
@@ -22,9 +24,9 @@ import remarkMath from "remark-math";
 interface ConversationViewProps {
   activeBranch: string;
   getBranchMessages: (branchId: string) => Message[];
-  branchesData: Record<string, BranchWithMessages>;
   onRenamingStart?: (chatId: string) => void;
   onRenamingEnd?: (chatId: string) => void;
+  onBranchSwitch?: (branchId: string) => void;
 }
 
 export default function ConversationView({
@@ -32,6 +34,7 @@ export default function ConversationView({
   getBranchMessages,
   onRenamingStart,
   onRenamingEnd,
+  onBranchSwitch,
 }: ConversationViewProps) {
   const {
     setBranchesData,
@@ -137,15 +140,17 @@ export default function ConversationView({
         }`;
 
         console.log("📡 Calling naming API...");
-        const response = await fetch(
-          `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const userApiKey = localStorage.getItem("gemini_api_key");
+        const apiUrl = userApiKey
+        ? `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming&apiKey=${encodeURIComponent(userApiKey)}`
+        : `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`;
+
+        const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`Naming API failed: ${response.status}`);
@@ -185,6 +190,60 @@ export default function ConversationView({
     [currentUserData, allChats, onRenamingStart, onRenamingEnd]
   );
 
+  // Generate branch name using AI
+  const generateBranchName = useCallback(
+    async (namingPrompt: string, branchId: string) => {
+      console.log("🎯 Starting branch naming for branch:", branchId);
+
+      try {
+        console.log("📡 Calling branch naming API...");
+        const userApiKey = localStorage.getItem("gemini_api_key");
+        const apiUrl = userApiKey
+          ? `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming&apiKey=${encodeURIComponent(userApiKey)}`
+          : `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`;
+
+        const response = await fetch(apiUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Branch naming API failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const suggestedName = data.answer?.trim() || "Branch Discussion";
+        console.log("🤖 AI suggested branch name:", suggestedName);
+
+        // Clean up the suggested name (remove quotes, extra spaces, etc.)
+        const cleanName = suggestedName
+          .replace(/^["']|[\"']$/g, "") // Remove surrounding quotes
+          .replace(/\s+/g, " ") // Normalize spaces
+          .trim();
+
+        console.log("✨ Cleaned branch name:", cleanName);
+
+        // Update branch name in Firestore
+        if (currentUserData && cleanName && cleanName !== "Branch Discussion") {
+          console.log("💾 Updating branch name in Firestore...");
+          await updateBranchName(currentUserData.uid, activeChatId!, branchId, cleanName);
+          console.log("✅ Branch renamed to:", cleanName);
+        } else {
+          console.log("⚠️ Skipping branch update - conditions not met", {
+            hasUserData: !!currentUserData,
+            cleanName,
+            isDifferent: cleanName !== "Branch Discussion",
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error generating branch name:", error);
+      }
+    },
+    [currentUserData, activeChatId]
+  );
+
   // Watch for message count changes to trigger auto-naming
   useEffect(() => {
     const currentBranch = branchesData[activeBranch];
@@ -192,18 +251,22 @@ export default function ConversationView({
 
     // If message count just reached 2 (first user + assistant exchange)
     if (currentMessageCount === 2 && lastMessageCount !== 2 && activeChatId) {
-      // Check if chat has already been auto-renamed
-      const currentChat = allChats?.find((chat) => chat.id === activeChatId);
+      console.log("🎯 Message count reached 2! Triggering auto-naming...");
+      const messages = currentBranch?.messages || [];
+      if (messages.length >= 2) {
+        const userMsg = messages.find((m) => m.role === "user");
+        const aiMsg = messages.find((m) => m.role === "assistant");
+        if (userMsg && aiMsg) {
+          const currentChat = allChats?.find((chat) => chat.id === activeChatId);
 
-      if (currentChat?.autoRenamed) {
-        console.log("⏭️ Chat already auto-renamed, skipping:", activeChatId);
-      } else {
-        console.log("🎯 Message count reached 2! Triggering auto-naming...");
-        const messages = currentBranch?.messages || [];
-        if (messages.length >= 2) {
-          const userMsg = messages.find((m) => m.role === "user");
-          const aiMsg = messages.find((m) => m.role === "assistant");
-          if (userMsg && aiMsg) {
+          // For follow-up branches, also auto-rename them based on their conversation
+          if (activeBranch !== 'main') {
+            // This is a follow-up branch - rename it based on its conversation
+            console.log("🎯 Follow-up branch reached 2 messages! Auto-renaming branch...");
+            const conversationPrompt = `User: ${userMsg.content.substring(0, 150)}${userMsg.content.length > 150 ? "..." : ""}\n\nAssistant: ${aiMsg.content.substring(0, 150)}${aiMsg.content.length > 150 ? "..." : ""}`;
+            generateBranchName(`Based on this conversation, suggest a short, descriptive name (under 5 words): ${conversationPrompt}`, activeBranch);
+          } else if (!currentChat?.autoRenamed) {
+            // Main branch or first naming - rename the chat
             generateConversationName(
               userMsg.content,
               aiMsg.content,
@@ -221,6 +284,7 @@ export default function ConversationView({
     activeChatId,
     lastMessageCount,
     generateConversationName,
+    generateBranchName,
     allChats,
   ]);
 
@@ -283,16 +347,20 @@ export default function ConversationView({
     setIsTyping(true);
     setShouldScrollToBottom(true);
 
+    // Get user's API key from localStorage
+    const userApiKey = localStorage.getItem("gemini_api_key");
+
     // Send to API and get the assistant's reply
     const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        question: message,
-        // Gemini expects history as an array of {role, parts: [{text}]}
-        history: getBranchMessages(activeBranch).map((msg) => ({
+    method: "POST",
+    headers: {
+    "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+    question: message,
+    apiKey: userApiKey, // Include user's API key if available
+    // Gemini expects history as an array of {role, parts: [{text}]}
+      history: getBranchMessages(activeBranch).map((msg) => ({
           role: msg.role === "assistant" ? "model" : "user",
           parts: [{ text: msg.content }],
         })),
@@ -359,35 +427,76 @@ export default function ConversationView({
 
   // Branch creation handler
   const handleCreateBranch = async (
-    parentBranchId: string,
-    parentMessageId: string
+  parentBranchId: string,
+  parentMessageId: string
   ) => {
-    if (!currentUserData || !activeChatId) return;
-    const branchName = prompt("Enter a name for the new branch:");
-    if (!branchName) return;
-    const newBranchId = uuidv4();
-    // Do NOT copy parent messages; only store new messages in this branch
-    const newBranch = {
-      id: newBranchId,
-      name: branchName,
-      color: getRandomColor(),
-      parentId: parentBranchId,
-      parentMessageId,
-      messages: [], // Only new messages for this branch
-    };
-    // Add to Firestore
-    await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
-    // Add to local state
-    setBranchesData((prev: Record<string, BranchWithMessages>) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        branches: {
-          ...prev.branches,
-          [newBranchId]: newBranch,
-        },
-      };
-    });
+  if (!currentUserData || !activeChatId) return;
+  const branchName = prompt("Enter a name for the new branch:");
+  if (!branchName) return;
+  const newBranchId = uuidv4();
+  // Do NOT copy parent messages; only store new messages in this branch
+  const newBranch = {
+  id: newBranchId,
+  name: branchName,
+  color: getRandomColor(),
+  parentId: parentBranchId,
+  parentMessageId,
+  messages: [], // Only new messages for this branch
+  };
+  // Add to Firestore
+  await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
+  // Add to local state
+  setBranchesData((prev: Record<string, BranchWithMessages>) => {
+  if (!prev) return prev;
+  return {
+  ...prev,
+  [newBranchId]: newBranch,
+  };
+  });
+  };
+
+  // Handle "Ask AI" from text selection
+  const handleAskAI = async (selectedText: string, messageId: string) => {
+  if (!currentUserData || !activeChatId) return;
+
+  // Find the branch that contains this message
+  const parentBranchId = getMessageBranchId(messageId);
+  if (!parentBranchId) return;
+
+  // Create a new branch for the follow-up question
+  const branchName = `${selectedText.substring(0, 30)}${selectedText.length > 30 ? '...' : ''}`;
+  const newBranchId = uuidv4();
+
+  const newBranch = {
+  id: newBranchId,
+  name: branchName,
+  color: getRandomColor(),
+  parentId: parentBranchId,
+  parentMessageId: messageId,
+  messages: [], // Only new messages for this branch
+  };
+
+  // Add to Firestore
+  await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
+
+  // Add to local state
+  setBranchesData((prev: Record<string, BranchWithMessages>) => {
+  if (!prev) return prev;
+  return {
+  ...prev,
+  [newBranchId]: newBranch,
+  };
+  });
+
+  // Switch to the new branch immediately
+  onBranchSwitch?.(newBranchId);
+
+  // Auto-rename the branch using AI based on selected text
+  generateBranchName(`Suggest a short, descriptive name for a conversation about: "${selectedText}". Keep it under 5 words.`, newBranchId);
+
+    // Pre-fill the input with a contextual question
+    const contextualQuestion = `Tell me more about "${selectedText}"`;
+    setMessage(contextualQuestion);
   };
 
   return (
@@ -458,9 +567,10 @@ export default function ConversationView({
                 })()}
 
               <div
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                } mb-6`}
+              className={`flex ${
+              message.role === "user" ? "justify-end" : "justify-start"
+              } mb-6`}
+                data-message-id={message.id}
               >
                 <div
                   className={`${
@@ -640,12 +750,14 @@ export default function ConversationView({
 
       {/* Message input */}
       <ChatInput
-        message={message}
-        setMessage={setMessage}
-        handleSubmit={handleSubmit}
-        branchesData={branchesData}
-        activeBranch={activeBranch}
+      message={message}
+      setMessage={setMessage}
+      handleSubmit={handleSubmit}
+      branchesData={branchesData}
+      activeBranch={activeBranch}
       />
+
+          <TextSelectionTooltip onAskAI={handleAskAI} />
     </div>
   );
 }

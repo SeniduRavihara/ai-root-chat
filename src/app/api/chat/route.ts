@@ -1,14 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
 
-const gemi = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
     const question = body.question;
+    const apiKey = body.apiKey || process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "API key required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const gemi = new GoogleGenAI({
+      apiKey: apiKey,
+    });
     const historyParam = body.history;
 
     if (!question) {
