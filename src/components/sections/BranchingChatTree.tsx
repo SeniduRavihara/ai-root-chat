@@ -343,17 +343,21 @@ export default function BranchingChatTree() {
         parts: [{ text: msg.content }],
       }));
 
-      const response = await fetch(
-        `/api/chat2?question=${encodeURIComponent(
+      const userApiKey = localStorage.getItem("gemini_api_key");
+      const apiUrl = userApiKey
+      ? `/api/chat2?question=${encodeURIComponent(
           userMessage.content
-        )}&history=${encodeURIComponent(JSON.stringify(historyForAPI))}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+        )}&history=${encodeURIComponent(JSON.stringify(historyForAPI))}&apiKey=${encodeURIComponent(userApiKey)}`
+      : `/api/chat2?question=${encodeURIComponent(
+        userMessage.content
+      )}&history=${encodeURIComponent(JSON.stringify(historyForAPI))}`;
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to get AI response");
@@ -403,15 +407,17 @@ export default function BranchingChatTree() {
         aiResponse.length > 200 ? "..." : ""
       }`;
 
-      const response = await fetch(
-        `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const userApiKey = localStorage.getItem("gemini_api_key");
+      const apiUrl = userApiKey
+      ? `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming&apiKey=${encodeURIComponent(userApiKey)}`
+      : `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`;
+
+      const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to generate conversation name");
@@ -575,11 +581,11 @@ export default function BranchingChatTree() {
             }`}
           >
             <ConversationView
-              activeBranch={activeBranch}
-              getBranchMessages={getBranchMessages}
-              branchesData={branchesData}
-              onRenamingStart={startRenaming}
-              onRenamingEnd={stopRenaming}
+            activeBranch={activeBranch}
+            getBranchMessages={getBranchMessages}
+            onRenamingStart={startRenaming}
+            onRenamingEnd={stopRenaming}
+              onBranchSwitch={handleBranchSwitch}
             />
           </div>
         )}

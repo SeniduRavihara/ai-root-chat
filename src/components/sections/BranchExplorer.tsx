@@ -3,13 +3,15 @@ import { logout } from "@/firebase/services/AuthService";
 import { createNewChat } from "@/firebase/services/ChatService";
 import { useAuth } from "@/hooks/useAuth";
 import { useData } from "@/hooks/useData";
+import SettingsModal from "@/components/ui/SettingsModal";
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Plus,
-  Search,
+ChevronDown,
+ChevronLeft,
+ChevronRight,
+LogOut,
+Plus,
+Search,
+Settings,
   User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -59,6 +61,7 @@ export default function BranchExplorer({
     isChatsLoading,
   } = useData();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
@@ -311,26 +314,36 @@ export default function BranchExplorer({
                 </div>
               </div>
               <div className="p-2 space-y-1">
+              <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
+              >
+              <Settings size={16} className="mr-2" />
+                Settings
+              </button>
+              <button
+              onClick={handleSeedSampleData}
+                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
+              >
+              Seed sample data
+              </button>
                 <button
-                  onClick={handleSeedSampleData}
-                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
-                >
-                  Seed sample data
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
-                >
-                  <LogOut size={16} className="mr-2" />
-                  Sign out
-                </button>
-              </div>
+                   onClick={handleLogout}
+                   className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
+                 >
+                   <LogOut size={16} className="mr-2" />
+                   Sign out
+                 </button>
+               </div>
             </div>
           )}
         </div>
       </div>
 
-
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </>
   );
 }
