@@ -48,7 +48,7 @@ export default function TextSelectionTooltip({ onAskAI }: TextSelectionTooltipPr
 
         // Check if the selection is within a message content area
         const range = selection.getRangeAt(0);
-        let messageElement = range.commonAncestorContainer;
+        let messageElement: Node | null = range.commonAncestorContainer;
 
         // Walk up the DOM to find the message element
         while (messageElement && !(messageElement as Element).hasAttribute?.('data-message-id')) {
