@@ -1,5 +1,5 @@
-import { db } from "@/firebase/firebase_config";
-import { BranchWithMessages, Chat } from "@/types";
+import { db } from "../firebase_config";
+import { BranchWithMessages, Chat } from "../../types";
 import {
   arrayUnion,
   collection,

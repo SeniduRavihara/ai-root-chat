@@ -1,4 +1,4 @@
-import { BranchWithMessages } from "@/types";
+import { BranchWithMessages } from "../../types";
 import { GitBranch, GitFork, MoreHorizontal } from "lucide-react";
 import React from "react";
 

@@ -1,5 +1,5 @@
-import AuthContextProvider from "@/context/AuthContext";
-import DataContextProvider from "@/context/DataContext";
+import AuthContextProvider from "../context/AuthContext";
+import DataContextProvider from "../context/DataContext";
 import "katex/dist/katex.min.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";

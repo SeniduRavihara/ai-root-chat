@@ -1,9 +1,9 @@
-import { addMockData } from "@/firebase/api";
-import { logout } from "@/firebase/services/AuthService";
-import { createNewChat } from "@/firebase/services/ChatService";
-import { useAuth } from "@/hooks/useAuth";
-import { useData } from "@/hooks/useData";
-import SettingsModal from "@/components/ui/SettingsModal";
+import { addMockData } from "../../firebase/api";
+import { logout } from "../../firebase/services/AuthService";
+import { createNewChat } from "../../firebase/services/ChatService";
+import { useAuth } from "../../hooks/useAuth";
+import { useData } from "../../hooks/useData";
+import SettingsModal from "../ui/SettingsModal";
 import {
 ChevronDown,
 ChevronLeft,

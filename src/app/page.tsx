@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
-import { useData } from "@/hooks/useData";
-import BranchingChatTree from "@/components/sections/BranchingChatTree";
+import { useAuth } from "../hooks/useAuth";
+import { useData } from "../hooks/useData";
+import BranchingChatTree from "../components/sections/BranchingChatTree";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

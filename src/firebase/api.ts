@@ -1,5 +1,5 @@
-import { mockBranchesData } from "@/components/sections/data";
-import { BranchWithMessages, UserDataType } from "@/types";
+import { mockBranchesData } from "../components/sections/data";
+import { BranchWithMessages, UserDataType } from "../types";
 import { User } from "firebase/auth";
 import {
   arrayUnion,

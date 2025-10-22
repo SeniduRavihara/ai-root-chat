@@ -1,11 +1,11 @@
 "use client";
 
-import { useData } from "@/hooks/useData";
-import TextSelectionTooltip from "@/components/ui/TextSelectionTooltip";
+import { useData } from "../../hooks/useData";
+import TextSelectionTooltip from "../ui/TextSelectionTooltip";
 import { Bot, GitBranch, GitFork, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { BranchWithMessages, Message } from "@/types";
+import { BranchWithMessages, Message } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
@@ -13,13 +13,14 @@ import {
 addMessageToBranch,
 createBranchForUser,
 updateBranchName,
-  updateChatName,
-} from "@/firebase/services/ChatService";
+updateChatName,
+} from "../../firebase/services/ChatService";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import StreamingMessage from "../ui/StreamingMessage";
 
 interface ConversationViewProps {
   activeBranch: string;

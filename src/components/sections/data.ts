@@ -1,4 +1,4 @@
-import { BranchWithMessages } from "@/types";
+import { BranchWithMessages } from "../../types";
 
 export const mockBranchesData: Record<string, BranchWithMessages> = {
   main: {

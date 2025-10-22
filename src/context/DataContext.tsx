@@ -1,13 +1,13 @@
 "use client";
 
-import { INITIAL_DATA_CONTEXT } from "@/constants";
-import { db } from "@/firebase/firebase_config";
+import { INITIAL_DATA_CONTEXT } from "../constants";
+import { db } from "../firebase/firebase_config";
 import {
-  BranchWithMessages,
-  Chat,
-  DataContextType,
-  UserDataType,
-} from "@/types";
+BranchWithMessages,
+Chat,
+DataContextType,
+UserDataType,
+} from "../types";
 import { collection, onSnapshot } from "firebase/firestore";
 import { createContext, useEffect, useMemo, useRef, useState } from "react";
 

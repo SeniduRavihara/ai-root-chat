@@ -1,6 +1,6 @@
 "use client";
 
-import { useData } from "@/hooks/useData";
+import { useData } from "../../hooks/useData";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BranchWithMessages, Message } from "../../types";
 import { MessageCircle, GitBranch, RefreshCw } from "lucide-react";
@@ -12,8 +12,8 @@ import {
 createNewChat,
 addMessageToBranch,
 updateChatName,
-  updateBranchName,
-} from "@/firebase/services/ChatService";
+updateBranchName,
+} from "../../firebase/services/ChatService";
 
 export default function BranchingChatTree() {
   const {

@@ -1,5 +1,5 @@
-import { mockBranchesData } from "@/components/sections/data";
-import { BranchWithMessages, Message } from "@/types";
+import { mockBranchesData } from "../components/sections/data";
+import { BranchWithMessages, Message } from "../types";
 
 /**
  * Test utility to verify branch inheritance
