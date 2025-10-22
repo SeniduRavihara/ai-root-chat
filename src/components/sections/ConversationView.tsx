@@ -2,7 +2,7 @@
 
 import { useData } from "../../hooks/useData";
 import TextSelectionTooltip from "../ui/TextSelectionTooltip";
-import { Bot, GitBranch, GitFork, User } from "lucide-react";
+import { Bot, GitBranch, GitFork } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { BranchWithMessages, Message } from "../../types";
@@ -10,10 +10,10 @@ import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import TypingIndicator from "../conversation-view/TypingIndicator";
 import {
-addMessageToBranch,
-createBranchForUser,
-updateBranchName,
-updateChatName,
+  addMessageToBranch,
+  createBranchForUser,
+  updateBranchName,
+  updateChatName,
 } from "../../firebase/services/ChatService";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
@@ -47,6 +47,7 @@ export default function ConversationView({
 
   const [message, setMessage] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [streamingContent, setStreamingContent] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -143,12 +144,12 @@ export default function ConversationView({
         console.log("📡 Calling naming API...");
         const userApiKey = localStorage.getItem("gemini_api_key");
         const apiUrl = userApiKey
-        ? `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming&apiKey=${encodeURIComponent(userApiKey)}`
-        : `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`;
+          ? `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming&apiKey=${encodeURIComponent(userApiKey)}`
+          : `/api/chat2?question=${encodeURIComponent(namingPrompt)}&type=naming`;
 
         const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
+          method: "GET",
+          headers: {
             "Content-Type": "application/json",
           },
         });
@@ -163,8 +164,8 @@ export default function ConversationView({
 
         // Clean up the suggested name (remove quotes, extra spaces, etc.)
         const cleanName = suggestedName
-          .replace(/^["']|["']$/g, "") // Remove surrounding quotes
-          .replace(/\s+/g, " ") // Normalize spaces
+          .replace(/^["']|["']$/g, "")
+          .replace(/\s+/g, " ")
           .trim();
 
         console.log("✨ Cleaned name:", cleanName);
@@ -220,8 +221,8 @@ export default function ConversationView({
 
         // Clean up the suggested name (remove quotes, extra spaces, etc.)
         const cleanName = suggestedName
-          .replace(/^["']|[\"']$/g, "") // Remove surrounding quotes
-          .replace(/\s+/g, " ") // Normalize spaces
+          .replace(/^["']|[\"']$/g, "")
+          .replace(/\s+/g, " ")
           .trim();
 
         console.log("✨ Cleaned branch name:", cleanName);
@@ -229,7 +230,12 @@ export default function ConversationView({
         // Update branch name in Firestore
         if (currentUserData && cleanName && cleanName !== "Branch Discussion") {
           console.log("💾 Updating branch name in Firestore...");
-          await updateBranchName(currentUserData.uid, activeChatId!, branchId, cleanName);
+          await updateBranchName(
+            currentUserData.uid,
+            activeChatId!,
+            branchId,
+            cleanName
+          );
           console.log("✅ Branch renamed to:", cleanName);
         } else {
           console.log("⚠️ Skipping branch update - conditions not met", {
@@ -258,14 +264,24 @@ export default function ConversationView({
         const userMsg = messages.find((m) => m.role === "user");
         const aiMsg = messages.find((m) => m.role === "assistant");
         if (userMsg && aiMsg) {
-          const currentChat = allChats?.find((chat) => chat.id === activeChatId);
+          const currentChat = allChats?.find(
+            (chat) => chat.id === activeChatId
+          );
 
           // For follow-up branches, also auto-rename them based on their conversation
-          if (activeBranch !== 'main') {
+          if (activeBranch !== "main") {
             // This is a follow-up branch - rename it based on its conversation
-            console.log("🎯 Follow-up branch reached 2 messages! Auto-renaming branch...");
-            const conversationPrompt = `User: ${userMsg.content.substring(0, 150)}${userMsg.content.length > 150 ? "..." : ""}\n\nAssistant: ${aiMsg.content.substring(0, 150)}${aiMsg.content.length > 150 ? "..." : ""}`;
-            generateBranchName(`Based on this conversation, suggest a short, descriptive name (under 5 words): ${conversationPrompt}`, activeBranch);
+            console.log(
+              "🎯 Follow-up branch reached 2 messages! Auto-renaming branch..."
+            );
+            const conversationPrompt = `User: ${userMsg.content.substring(
+              0,
+              150
+            )}${userMsg.content.length > 150 ? "..." : ""}\n\nAssistant: ${aiMsg.content.substring(0, 150)}${aiMsg.content.length > 150 ? "..." : ""}`;
+            generateBranchName(
+              `Based on this conversation, suggest a short, descriptive name (under 5 words): ${conversationPrompt}`,
+              activeBranch
+            );
           } else if (!currentChat?.autoRenamed) {
             // Main branch or first naming - rename the chat
             generateConversationName(
@@ -351,37 +367,16 @@ export default function ConversationView({
     // Get user's API key from localStorage
     const userApiKey = localStorage.getItem("gemini_api_key");
 
-    // Send to API and get the assistant's reply
-    const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: {
-    "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-    question: message,
-    apiKey: userApiKey, // Include user's API key if available
-    // Gemini expects history as an array of {role, parts: [{text}]}
-      history: getBranchMessages(activeBranch).map((msg) => ({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }],
-        })),
-      }),
-    });
-
-    const data = await response.json();
-    const assistantMessage = data.answer; // adjust if your API returns differently
-
-    console.log("Assistant's reply:", assistantMessage);
-
+    // Create assistant message placeholder
     const assistantMessageObj: Message = {
       id: `assistant-${Date.now()}`,
       role: "assistant" as const,
-      content: assistantMessage,
+      content: "",
       timestamp: new Date().toISOString(),
       branchId: activeBranch,
     };
 
-    // Add the assistant's reply to the branch
+    // Add the assistant's reply placeholder to the branch
     setBranchesData((prev: Record<string, BranchWithMessages>) => {
       const existingBranch = prev?.[activeBranch] ?? {
         id: activeBranch,
@@ -401,99 +396,173 @@ export default function ConversationView({
       };
     });
 
-    await addMessageToBranch(
-      currentUserData.uid,
-      activeBranch,
-      assistantMessageObj,
-      activeChatId
-    );
+    setStreamingContent("");
 
-    // Check if this is the first message exchange (user + assistant = 2 messages)
-    const currentBranch = branchesData[activeBranch];
-    const totalMessages = currentBranch?.messages?.length || 0;
+    // Send to API and stream the assistant's reply
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: message,
+        apiKey: userApiKey,
+        history: getBranchMessages(activeBranch).map((msg) => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        })),
+      }),
+    });
 
-    // If we just added the assistant message and there are exactly 2 messages, it's the first exchange
-    if (totalMessages === 2) {
-      // Trigger automatic chat naming
-      generateConversationName(
-        userMessage.content,
-        assistantMessage,
-        activeChatId
-      );
+    if (!response.ok) {
+      console.error("API error:", response.status);
+      setIsTyping(false);
+      return;
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = "";
+
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter((line) => line.startsWith("data: "));
+
+      for (const line of lines) {
+        const dataStr = line.replace("data: ", "").trim();
+        if (dataStr === "[DONE]") break;
+
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.delta) {
+            fullContent += data.delta;
+            setStreamingContent(fullContent);
+          } else if (data.done) {
+            // Update the message with final content
+            setBranchesData((prev: Record<string, BranchWithMessages>) => {
+              const existingBranch = prev[activeBranch];
+              if (!existingBranch) return prev;
+
+              const messages = existingBranch.messages ?? [];
+              const lastMessage = messages[messages.length - 1];
+              if (lastMessage && lastMessage.role === "assistant") {
+                lastMessage.content = fullContent;
+              }
+
+              return {
+                ...prev,
+                [activeBranch]: {
+                  ...existingBranch,
+                  messages: [...messages],
+                },
+              };
+            });
+
+            await addMessageToBranch(
+              currentUserData?.uid,
+              activeBranch,
+              { ...assistantMessageObj, content: fullContent },
+              activeChatId
+            );
+
+            // Check if this is the first message exchange
+            const currentBranch = branchesData[activeBranch];
+            const totalMessages = currentBranch?.messages?.length || 0;
+            if (totalMessages === 2) {
+              generateConversationName(
+                userMessage.content,
+                fullContent,
+                activeChatId
+              );
+            }
+          }
+        } catch (e) {
+          console.error("Parse error:", e);
+        }
+      }
     }
 
     setIsTyping(false);
+    setStreamingContent("");
     setShouldScrollToBottom(true);
   };
 
   // Branch creation handler
   const handleCreateBranch = async (
-  parentBranchId: string,
-  parentMessageId: string
+    parentBranchId: string,
+    parentMessageId: string
   ) => {
-  if (!currentUserData || !activeChatId) return;
-  const branchName = prompt("Enter a name for the new branch:");
-  if (!branchName) return;
-  const newBranchId = uuidv4();
-  // Do NOT copy parent messages; only store new messages in this branch
-  const newBranch = {
-  id: newBranchId,
-  name: branchName,
-  color: getRandomColor(),
-  parentId: parentBranchId,
-  parentMessageId,
-  messages: [], // Only new messages for this branch
-  };
-  // Add to Firestore
-  await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
-  // Add to local state
-  setBranchesData((prev: Record<string, BranchWithMessages>) => {
-  if (!prev) return prev;
-  return {
-  ...prev,
-  [newBranchId]: newBranch,
-  };
-  });
+    if (!currentUserData || !activeChatId) return;
+    const branchName = prompt("Enter a name for the new branch:");
+    if (!branchName) return;
+    const newBranchId = uuidv4();
+    // Do NOT copy parent messages; only store new messages in this branch
+    const newBranch = {
+      id: newBranchId,
+      name: branchName,
+      color: getRandomColor(),
+      parentId: parentBranchId,
+      parentMessageId,
+      messages: [], // Only new messages for this branch
+    };
+    // Add to Firestore
+    await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
+    // Add to local state
+    setBranchesData((prev: Record<string, BranchWithMessages>) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [newBranchId]: newBranch,
+      };
+    });
   };
 
   // Handle "Ask AI" from text selection
   const handleAskAI = async (selectedText: string, messageId: string) => {
-  if (!currentUserData || !activeChatId) return;
+    if (!currentUserData || !activeChatId) return;
 
-  // Find the branch that contains this message
-  const parentBranchId = getMessageBranchId(messageId);
-  if (!parentBranchId) return;
+    // Find the branch that contains this message
+    const parentBranchId = getMessageBranchId(messageId);
+    if (!parentBranchId) return;
 
-  // Create a new branch for the follow-up question
-  const branchName = `${selectedText.substring(0, 30)}${selectedText.length > 30 ? '...' : ''}`;
-  const newBranchId = uuidv4();
+    // Create a new branch for the follow-up question
+    const branchName = `${selectedText.substring(0, 30)}${
+      selectedText.length > 30 ? "..." : ""
+    }`;
+    const newBranchId = uuidv4();
 
-  const newBranch = {
-  id: newBranchId,
-  name: branchName,
-  color: getRandomColor(),
-  parentId: parentBranchId,
-  parentMessageId: messageId,
-  messages: [], // Only new messages for this branch
-  };
+    const newBranch = {
+      id: newBranchId,
+      name: branchName,
+      color: getRandomColor(),
+      parentId: parentBranchId,
+      parentMessageId: messageId,
+      messages: [], // Only new messages for this branch
+    };
 
-  // Add to Firestore
-  await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
+    // Add to Firestore
+    await createBranchForUser(currentUserData.uid, activeChatId, newBranch);
 
-  // Add to local state
-  setBranchesData((prev: Record<string, BranchWithMessages>) => {
-  if (!prev) return prev;
-  return {
-  ...prev,
-  [newBranchId]: newBranch,
-  };
-  });
+    // Add to local state
+    setBranchesData((prev: Record<string, BranchWithMessages>) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [newBranchId]: newBranch,
+      };
+    });
 
-  // Switch to the new branch immediately
-  onBranchSwitch?.(newBranchId);
+    // Switch to the new branch immediately
+    onBranchSwitch?.(newBranchId);
 
-  // Auto-rename the branch using AI based on selected text
-  generateBranchName(`Suggest a short, descriptive name for a conversation about: "${selectedText}". Keep it under 5 words.`, newBranchId);
+    // Auto-rename the branch using AI based on selected text
+    generateBranchName(
+      `Suggest a short, descriptive name for a conversation about: "${selectedText}". Keep it under 5 words.`,
+      newBranchId
+    );
 
     // Pre-fill the input with a contextual question
     const contextualQuestion = `Tell me more about "${selectedText}"`;
@@ -568,9 +637,9 @@ export default function ConversationView({
                 })()}
 
               <div
-              className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-              } mb-6`}
+                className={`flex ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                } mb-6`}
                 data-message-id={message.id}
               >
                 <div
@@ -620,87 +689,95 @@ export default function ConversationView({
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* AI Message Content */}
-                          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm, remarkMath]}
-                              rehypePlugins={[rehypeKatex]}
-                              components={{
-                                code({ className, children, ...props }) {
-                                  const isCodeBlock =
-                                    className &&
-                                    className.startsWith("language-");
-                                  return isCodeBlock ? (
-                                    <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
-                                      <code className={className} {...props}>
+                          {index === allMessages.length - 1 &&
+                          streamingContent ? (
+                            <StreamingMessage
+                              content={streamingContent}
+                              isStreaming={true}
+                            />
+                          ) : (
+                            <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                                components={{
+                                  code({ className, children, ...props }) {
+                                    const isCodeBlock =
+                                      className &&
+                                      className.startsWith("language-");
+                                    return isCodeBlock ? (
+                                      <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
+                                        <code className={className} {...props}>
+                                          {children}
+                                        </code>
+                                      </pre>
+                                    ) : (
+                                      <code
+                                        className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
+                                        {...props}
+                                      >
                                         {children}
                                       </code>
-                                    </pre>
-                                  ) : (
-                                    <code
-                                      className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
-                                      {...props}
-                                    >
-                                      {children}
-                                    </code>
-                                  );
-                                },
-                                table({ children }) {
-                                  return (
-                                    <div className="overflow-x-auto my-4">
-                                      <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                                    );
+                                  },
+                                  table({ children }) {
+                                    return (
+                                      <div className="overflow-x-auto my-4">
+                                        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                                          {children}
+                                        </table>
+                                      </div>
+                                    );
+                                  },
+                                  th({ children }) {
+                                    return (
+                                      <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-left font-medium dark:border-gray-600 dark:bg-gray-700">
                                         {children}
-                                      </table>
-                                    </div>
-                                  );
-                                },
-                                th({ children }) {
-                                  return (
-                                    <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-left font-medium dark:border-gray-600 dark:bg-gray-700">
-                                      {children}
-                                    </th>
-                                  );
-                                },
-                                td({ children }) {
-                                  return (
-                                    <td className="border border-gray-300 px-4 py-2 dark:border-gray-600">
-                                      {children}
-                                    </td>
-                                  );
-                                },
-                                blockquote({ children }) {
-                                  return (
-                                    <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
-                                      {children}
-                                    </blockquote>
-                                  );
-                                },
-                              }}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
-
-                            {/* Branch button and timestamp */}
-                            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                              <div className="flex items-center space-x-2">
-                                {message.role === "assistant" && (
-                                  <button
-                                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
-                                    onClick={() =>
-                                      handleCreateBranch(
-                                        getMessageBranchId(message.id)!,
-                                        message.id
-                                      )
-                                    }
-                                  >
-                                    <GitFork size={12} className="mr-1.5" />{" "}
-                                    Create Branch
-                                  </button>
-                                )}
-                              </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatTime(message.timestamp)}
-                              </span>
+                                      </th>
+                                    );
+                                  },
+                                  td({ children }) {
+                                    return (
+                                      <td className="border border-gray-300 px-4 py-2 dark:border-gray-600">
+                                        {children}
+                                      </td>
+                                    );
+                                  },
+                                  blockquote({ children }) {
+                                    return (
+                                      <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
+                                        {children}
+                                      </blockquote>
+                                    );
+                                  },
+                                }}
+                              >
+                                {message.content}
+                              </ReactMarkdown>
                             </div>
+                          )}
+
+                          {/* Branch button and timestamp */}
+                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center space-x-2">
+                              {message.role === "assistant" && (
+                                <button
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
+                                  onClick={() =>
+                                    handleCreateBranch(
+                                      getMessageBranchId(message.id)!,
+                                      message.id
+                                    )
+                                  }
+                                >
+                                  <GitFork size={12} className="mr-1.5" />{" "}
+                                  Create Branch
+                                </button>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {formatTime(message.timestamp)}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -751,14 +828,14 @@ export default function ConversationView({
 
       {/* Message input */}
       <ChatInput
-      message={message}
-      setMessage={setMessage}
-      handleSubmit={handleSubmit}
-      branchesData={branchesData}
-      activeBranch={activeBranch}
+        message={message}
+        setMessage={setMessage}
+        handleSubmit={handleSubmit}
+        branchesData={branchesData}
+        activeBranch={activeBranch}
       />
 
-          <TextSelectionTooltip onAskAI={handleAskAI} />
+      <TextSelectionTooltip onAskAI={handleAskAI} />
     </div>
   );
 }
