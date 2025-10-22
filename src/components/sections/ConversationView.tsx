@@ -22,6 +22,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import StreamingMessage from "../ui/StreamingMessage";
 
+
 interface ConversationViewProps {
   activeBranch: string;
   getBranchMessages: (branchId: string) => Message[];
@@ -440,7 +441,11 @@ export default function ConversationView({
           if (data.delta) {
             fullContent += data.delta;
             setStreamingContent(fullContent);
+            console.log('Chunk received:', JSON.stringify(data.delta), 'Full content:', JSON.stringify(fullContent));
           } else if (data.done) {
+            // Show final content in streaming display, then clear after a brief delay
+            setStreamingContent(fullContent);
+
             // Update the message with final content
             setBranchesData((prev: Record<string, BranchWithMessages>) => {
               const existingBranch = prev[activeBranch];
@@ -478,6 +483,9 @@ export default function ConversationView({
                 activeChatId
               );
             }
+
+            // Clear streaming content after a delay to let animation complete
+            setTimeout(() => setStreamingContent(""), 100);
           }
         } catch (e) {
           console.error("Parse error:", e);
@@ -689,72 +697,71 @@ export default function ConversationView({
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* AI Message Content */}
-                          {index === allMessages.length - 1 &&
-                          streamingContent ? (
+                          {index === allMessages.length - 1 && (isTyping || streamingContent) ? (
                             <StreamingMessage
-                              content={streamingContent}
-                              isStreaming={true}
+                              content={streamingContent || message.content}
+                              isStreaming={isTyping}
                             />
                           ) : (
                             <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex]}
-                                components={{
-                                  code({ className, children, ...props }) {
-                                    const isCodeBlock =
-                                      className &&
-                                      className.startsWith("language-");
-                                    return isCodeBlock ? (
-                                      <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
-                                        <code className={className} {...props}>
-                                          {children}
-                                        </code>
-                                      </pre>
-                                    ) : (
-                                      <code
-                                        className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
-                                        {...props}
-                                      >
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                              components={{
+                                code({ className, children, ...props }) {
+                                  const isCodeBlock =
+                                    className &&
+                                    className.startsWith("language-");
+                                  return isCodeBlock ? (
+                                    <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
+                                      <code className={className} {...props}>
                                         {children}
                                       </code>
-                                    );
-                                  },
-                                  table({ children }) {
-                                    return (
-                                      <div className="overflow-x-auto my-4">
-                                        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
-                                          {children}
-                                        </table>
-                                      </div>
-                                    );
-                                  },
-                                  th({ children }) {
-                                    return (
-                                      <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-left font-medium dark:border-gray-600 dark:bg-gray-700">
+                                    </pre>
+                                  ) : (
+                                    <code
+                                      className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
+                                      {...props}
+                                    >
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                                table({ children }) {
+                                  return (
+                                    <div className="overflow-x-auto my-4">
+                                      <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
                                         {children}
-                                      </th>
-                                    );
-                                  },
-                                  td({ children }) {
-                                    return (
-                                      <td className="border border-gray-300 px-4 py-2 dark:border-gray-600">
-                                        {children}
-                                      </td>
-                                    );
-                                  },
-                                  blockquote({ children }) {
-                                    return (
-                                      <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
-                                        {children}
-                                      </blockquote>
-                                    );
-                                  },
-                                }}
-                              >
-                                {message.content}
-                              </ReactMarkdown>
-                            </div>
+                                      </table>
+                                    </div>
+                                  );
+                                },
+                                th({ children }) {
+                                  return (
+                                    <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-left font-medium dark:border-gray-600 dark:bg-gray-700">
+                                      {children}
+                                    </th>
+                                  );
+                                },
+                                td({ children }) {
+                                  return (
+                                    <td className="border border-gray-300 px-4 py-2 dark:border-gray-600">
+                                      {children}
+                                    </td>
+                                  );
+                                },
+                                blockquote({ children }) {
+                                  return (
+                                    <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
+                                      {children}
+                                    </blockquote>
+                                  );
+                                },
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
                           )}
 
                           {/* Branch button and timestamp */}
