@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 
     // Convert our history format to Gemini format
-    let geminiHistory = [];
+    let geminiHistory: any[] = [];
     if (history && Array.isArray(history)) {
       geminiHistory = history.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
     const encoder = new TextEncoder();
     let fullResponse = "";
-    let fullHistory = [...geminiHistory];
+    const fullHistory = [...geminiHistory];
 
     const stream = new ReadableStream({
       async start(controller) {
