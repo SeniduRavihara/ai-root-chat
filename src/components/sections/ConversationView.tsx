@@ -1,12 +1,7 @@
 "use client";
 
 import "katex/dist/katex.min.css";
-import { Bot, GitBranch, GitFork } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import { v4 as uuidv4 } from "uuid";
 import {
   addMessageToBranch,
@@ -18,8 +13,8 @@ import { useData } from "../../hooks/useData";
 import { BranchWithMessages } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
+import MessageItem from "../conversation-view/MessageItem";
 import TypingIndicator from "../conversation-view/TypingIndicator";
-import StreamingMessage from "../ui/StreamingMessage";
 import TextSelectionTooltip from "../ui/TextSelectionTooltip";
 
 // Import new service modules
@@ -37,7 +32,6 @@ import {
   createAssistantMessage,
   createFollowUpQuestion,
   createUserMessage,
-  formatMessageTime,
 } from "../../services/messageService";
 import {
   createBranch,
@@ -569,245 +563,19 @@ export default function ConversationView({
           const isFromCurrentBranch = isMessageFromActiveBranch(message.id);
           const messageBranch = getMessageBranch(message.id, branchesData);
 
-          // Check if this message is a branch point
-          const branches = Object.values(branchesData) as BranchWithMessages[];
-          const hasBranches = branches.some(
-            (branch) => branch.parentMessageId === message.id
-          );
-
-          // Find branches that fork from this message
-          const forkingBranches = branches.filter(
-            (branch) => branch.parentMessageId === message.id
-          );
-
           return (
-            <div key={message.id}>
-              {/* Branch transition indicator */}
-              {index > 0 &&
-                (() => {
-                  const prevMessageBranchId = getMessageBranchId(
-                    allMessages[index - 1].id,
-                    branchesData
-                  );
-                  const currentMessageBranchId = getMessageBranchId(
-                    message.id,
-                    branchesData
-                  );
-
-                  if (
-                    prevMessageBranchId &&
-                    currentMessageBranchId &&
-                    prevMessageBranchId !== currentMessageBranchId
-                  ) {
-                    const currentBranch = branchesData[
-                      currentMessageBranchId
-                    ] as BranchWithMessages;
-
-                    return (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="w-full max-w-xs flex items-center">
-                          <div className="flex-grow h-px bg-gray-300 dark:bg-gray-700"></div>
-                          <div
-                            className="px-4 py-1 text-xs rounded-full flex items-center mx-2"
-                            style={{
-                              backgroundColor: `${currentBranch.color}20`,
-                              color: currentBranch.color,
-                            }}
-                          >
-                            <GitBranch size={12} className="mr-1" />
-                            {currentBranch.name} branch begins
-                          </div>
-                          <div className="flex-grow h-px bg-gray-300 dark:bg-gray-700"></div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-              <div
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                } mb-6`}
-                data-message-id={message.id}
-              >
-                <div
-                  className={`${
-                    message.role === "user"
-                      ? "max-w-[85%] rounded-2xl bg-blue-500 text-white shadow-lg"
-                      : "w-full max-w-none"
-                  } ${
-                    message.role === "assistant" && !isFromCurrentBranch
-                      ? "border-l-4 shadow-sm"
-                      : ""
-                  }`}
-                  style={
-                    message.role === "assistant" &&
-                    !isFromCurrentBranch &&
-                    messageBranch
-                      ? {
-                          borderLeftColor: messageBranch.color,
-                        }
-                      : {}
-                  }
-                >
-                  {/* User message styling - compact card */}
-                  {message.role === "user" ? (
-                    <div className="p-4">
-                      <p className="text-sm leading-relaxed">
-                        {message.content}
-                      </p>
-                      {!isFromCurrentBranch && messageBranch && (
-                        <span
-                          className="ml-2 text-xs px-1.5 py-0.5 rounded-full text-gray-600 dark:text-gray-300"
-                          style={{
-                            backgroundColor: `${messageBranch.color}20`,
-                            color: messageBranch.color,
-                          }}
-                        >
-                          {messageBranch.name}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    /* AI message styling - spacious, full-width */
-                    <div className="px-6 py-8">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg">
-                          <Bot size={16} className="text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {/* AI Message Content */}
-                          {index === allMessages.length - 1 &&
-                          (isTyping || streamingContent) ? (
-                            <StreamingMessage
-                              content={streamingContent || message.content}
-                              isStreaming={isTyping}
-                            />
-                          ) : (
-                            <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex]}
-                                components={{
-                                  code({ className, children, ...props }) {
-                                    const isCodeBlock =
-                                      className &&
-                                      className.startsWith("language-");
-                                    return isCodeBlock ? (
-                                      <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
-                                        <code className={className} {...props}>
-                                          {children}
-                                        </code>
-                                      </pre>
-                                    ) : (
-                                      <code
-                                        className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
-                                        {...props}
-                                      >
-                                        {children}
-                                      </code>
-                                    );
-                                  },
-                                  table({ children }) {
-                                    return (
-                                      <div className="overflow-x-auto my-4">
-                                        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
-                                          {children}
-                                        </table>
-                                      </div>
-                                    );
-                                  },
-                                  th({ children }) {
-                                    return (
-                                      <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-left font-medium dark:border-gray-600 dark:bg-gray-700">
-                                        {children}
-                                      </th>
-                                    );
-                                  },
-                                  td({ children }) {
-                                    return (
-                                      <td className="border border-gray-300 px-4 py-2 dark:border-gray-600">
-                                        {children}
-                                      </td>
-                                    );
-                                  },
-                                  blockquote({ children }) {
-                                    return (
-                                      <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
-                                        {children}
-                                      </blockquote>
-                                    );
-                                  },
-                                }}
-                              >
-                                {message.content}
-                              </ReactMarkdown>
-                            </div>
-                          )}
-
-                          {/* Branch button and timestamp */}
-                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center space-x-2">
-                              {message.role === "assistant" && (
-                                <button
-                                  className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center transition-colors"
-                                  onClick={() =>
-                                    handleCreateBranch(
-                                      getMessageBranchId(
-                                        message.id,
-                                        branchesData
-                                      )!,
-                                      message.id
-                                    )
-                                  }
-                                >
-                                  <GitFork size={12} className="mr-1.5" />{" "}
-                                  Create Branch
-                                </button>
-                              )}
-                            </div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {formatMessageTime(message.timestamp)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Show branch indicators if this message has branches */}
-              {hasBranches && message.role === "assistant" && (
-                <div className="flex justify-start pl-8 mt-1 mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                      <GitBranch size={10} className="mr-1" />
-                      {forkingBranches.length === 1
-                        ? "1 branch"
-                        : `${forkingBranches.length} branches`}{" "}
-                      fork from here
-                    </div>
-                    <div className="flex space-x-1">
-                      {forkingBranches.slice(0, 3).map((branch) => (
-                        <div
-                          key={branch.id}
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: branch.color }}
-                          title={branch.name}
-                        ></div>
-                      ))}
-                      {forkingBranches.length > 3 && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          +{forkingBranches.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <MessageItem
+              key={message.id}
+              message={message}
+              index={index}
+              allMessages={allMessages}
+              branchesData={branchesData}
+              isFromCurrentBranch={isFromCurrentBranch}
+              messageBranch={messageBranch}
+              isTyping={isTyping}
+              streamingContent={streamingContent}
+              onCreateBranch={handleCreateBranch}
+            />
           );
         })}
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { GitBranch, MessageCircle, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addMessageToBranch,
@@ -13,6 +12,8 @@ import { Message } from "../../types";
 import BranchExplorer from "./BranchExplorer";
 import BranchTreeFlow from "./BranchTreeFlow";
 import ConversationView from "./ConversationView";
+import ResizablePanelDivider from "./ResizablePanelDivider";
+import ViewModeControls from "./ViewModeControls";
 import WelcomeScreen from "./WelcomeScreen";
 
 // Import new service modules
@@ -66,7 +67,6 @@ export default function BranchingChatTree() {
   }, []);
 
   // Ref for the resize handle
-  const resizeRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Min and max heights for the tree view
@@ -140,69 +140,6 @@ export default function BranchingChatTree() {
       document.body.classList.remove("no-select");
     }
   }, [isResizing]);
-
-  // Mouse down handler for starting resize
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-
-    const startY = e.clientY;
-    const startHeight = treeViewHeight;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaY = e.clientY - startY;
-      const newHeight = startHeight + deltaY;
-      const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
-
-      // Constrain the height within bounds
-      const constrainedHeight = Math.min(
-        Math.max(newHeight, MIN_HEIGHT),
-        maxHeight
-      );
-      setTreeViewHeight(constrainedHeight);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
-
-  // Touch handlers for mobile support
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-
-    const startY = e.touches[0].clientY;
-    const startHeight = treeViewHeight;
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const deltaY = e.touches[0].clientY - startY;
-      const newHeight = startHeight + deltaY;
-      const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
-
-      const constrainedHeight = Math.min(
-        Math.max(newHeight, MIN_HEIGHT),
-        maxHeight
-      );
-      setTreeViewHeight(constrainedHeight);
-    };
-
-    const handleTouchEnd = () => {
-      setIsResizing(false);
-      document.removeEventListener("touchmove", handleTouchMove);
-      document.removeEventListener("touchend", handleTouchEnd);
-    };
-
-    document.addEventListener("touchmove", handleTouchMove);
-    document.addEventListener("touchend", handleTouchEnd);
-  };
 
   // Enhanced branch switching
   const handleBranchSwitch = (branchId: string) => {
@@ -386,43 +323,7 @@ export default function BranchingChatTree() {
       className="relative flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden"
     >
       {/* Mode Selector - Top Right Corner */}
-      <div className="absolute top-4 right-4 z-50 flex items-center space-x-2">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 flex">
-          <button
-            onClick={() => setViewMode("chat-only")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center ${
-              viewMode === "chat-only"
-                ? "bg-blue-500 text-white shadow-md"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-            title="Chat Only Mode"
-          >
-            <MessageCircle size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode("tree-only")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center ${
-              viewMode === "tree-only"
-                ? "bg-blue-500 text-white shadow-md"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-            title="Tree Only Mode"
-          >
-            <GitBranch size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode("both")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center ${
-              viewMode === "both"
-                ? "bg-blue-500 text-white shadow-md"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-            title="Both Views Mode"
-          >
-            <RefreshCw size={16} />
-          </button>
-        </div>
-      </div>
+      <ViewModeControls viewMode={viewMode} onViewModeChange={setViewMode} />
 
       {/* Left Sidebar - Full Height */}
       <BranchExplorer
@@ -473,23 +374,18 @@ export default function BranchingChatTree() {
 
             {/* Resize Handle - Only show in both mode */}
             {viewMode === "both" && (
-              <div
-                ref={resizeRef}
-                className={`absolute bottom-0 left-0 right-0 h-5 flex items-center justify-center group z-20
-                  bg-transparent transition-colors duration-150 border-b border-gray-300 dark:border-gray-700`}
-                onMouseDown={handleMouseDown}
-                onTouchStart={handleTouchStart}
-                style={{ cursor: "row-resize" }}
-              >
-                {/* Visible separator line */}
-                <div className="w-full h-0.5 bg-gray-300 dark:bg-gray-700" />
-                {/* Drag indicator */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors duration-150 shadow" />
-                {/* Tooltip */}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-20">
-                  Drag to resize tree view
-                </div>
-              </div>
+              <ResizablePanelDivider
+                onResize={(deltaY) => {
+                  setTreeViewHeight((prevHeight) => {
+                    const newHeight = prevHeight + deltaY;
+                    const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
+                    return Math.max(MIN_HEIGHT, Math.min(newHeight, maxHeight));
+                  });
+                }}
+                isResizing={isResizing}
+                onResizeStart={() => setIsResizing(true)}
+                onResizeEnd={() => setIsResizing(false)}
+              />
             )}
           </div>
         )}
