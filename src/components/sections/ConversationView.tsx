@@ -441,7 +441,7 @@ export default function ConversationView({
           if (data.delta) {
             fullContent += data.delta;
             setStreamingContent(fullContent);
-            console.log('Chunk received:', JSON.stringify(data.delta), 'Full content:', JSON.stringify(fullContent));
+
           } else if (data.done) {
             // Show final content in streaming display, then clear after a brief delay
             setStreamingContent(fullContent);
