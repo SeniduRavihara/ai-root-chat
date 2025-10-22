@@ -571,7 +571,7 @@ export default function ConversationView({
               allMessages={allMessages}
               branchesData={branchesData}
               isFromCurrentBranch={isFromCurrentBranch}
-              messageBranch={messageBranch}
+              messageBranch={messageBranch ?? undefined}
               isTyping={isTyping}
               streamingContent={streamingContent}
               onCreateBranch={handleCreateBranch}

@@ -31,7 +31,8 @@ export function getBranchPath(
 
   // Traverse backwards from child to parent (linked list traversal)
   while (currentBranchId) {
-    const branch = branchesData[currentBranchId];
+    const branch: BranchWithMessages | undefined =
+      branchesData[currentBranchId];
 
     if (!branch) {
       console.warn(
