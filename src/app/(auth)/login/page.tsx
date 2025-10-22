@@ -1,6 +1,6 @@
 "use client";
 
-import { googleSignIn, login } from "@/firebase/services/AuthService";
+import { googleSignIn, login } from "../../../firebase/services/AuthService";
 import { Bot, Github, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";

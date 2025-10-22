@@ -1,10 +1,10 @@
 "use client";
 
-import { INITIAL_AUTH_CONTEXT } from "@/constants";
-import { featchCurrentUserData } from "@/firebase/api";
-import { auth } from "@/firebase/firebase_config";
-import { useData } from "@/hooks/useData";
-import { AuthContextType, UserDataType } from "@/types";
+import { INITIAL_AUTH_CONTEXT } from "../constants";
+import { featchCurrentUserData } from "../firebase/api";
+import { auth } from "../firebase/firebase_config";
+import { useData } from "../hooks/useData";
+import { AuthContextType, UserDataType } from "../types";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, useEffect, useState } from "react";
 

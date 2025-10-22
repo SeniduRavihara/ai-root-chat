@@ -1,4 +1,4 @@
-import { BranchWithMessages, Message } from "@/types";
+import { BranchWithMessages, Message } from "../types";
 
 /**
  * Migrates Firebase data to ensure branchId properties are present

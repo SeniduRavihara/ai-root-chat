@@ -1,4 +1,4 @@
-import { BranchWithMessages } from "@/types";
+import { BranchWithMessages } from "../../types";
 import { GitBranch, Plus, Send } from "lucide-react";
 
 type ChatInputProps = {

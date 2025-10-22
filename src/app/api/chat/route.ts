@@ -1,23 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-
-    const question = body.question;
-    const apiKey = body.apiKey || process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API key required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const gemi = new GoogleGenAI({
-      apiKey: apiKey,
-    });
-    const historyParam = body.history;
+    const { question, apiKey, history } = await req.json();
 
     if (!question) {
       return new Response(JSON.stringify({ error: "Missing question" }), {
@@ -26,88 +11,86 @@ export async function POST(req: Request) {
       });
     }
 
-    let history = [];
+    const genAI = new GoogleGenerativeAI(apiKey || process.env.GEMINI_API_KEY!);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 
-    if (historyParam) {
-      try {
-        history = Array.isArray(historyParam)
-          ? historyParam
-          : JSON.parse(historyParam);
-      } catch {
-        return new Response(
-          JSON.stringify({ error: "Invalid history format" }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-      }
+    // Convert our history format to Gemini format
+    let geminiHistory: any[] = [];
+    if (history && Array.isArray(history)) {
+      geminiHistory = history.map(msg => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: msg.parts || [{ text: msg.content }]
+      }));
     }
 
+    // Add system message if not already present
     const systemMessage = {
       role: "user",
-      parts: [
-        {
-          text:
-            "DON'T WASTE TOKENS - Keep responses concise but helpful. You are an assistant. give the result with markdown styles to impress and equations in math answers",
-        },
-      ],
+      parts: [{
+        text: "DON'T WASTE TOKENS - Keep responses concise but helpful. You are an assistant. give the result with markdown styles to impress and equations in math answers"
+      }]
     };
 
-    let fullHistory = [];
-    if (
-      !history.length ||
-      !(
-        history[0]?.parts &&
-        history[0].parts[0]?.text &&
-        history[0].parts[0].text.includes(" give the result with markdown styles to impress and equations in math answers")
-      )
-    ) {
-      fullHistory = [systemMessage, ...history];
-    } else {
-      fullHistory = [...history];
+    if (!geminiHistory.length ||
+        !geminiHistory[0].parts[0].text.includes("DON'T WASTE TOKENS")) {
+      geminiHistory = [systemMessage, ...geminiHistory];
     }
 
-    const currentMessage = {
-      role: "user",
-      parts: [{ text: question }],
-    };
-
-    fullHistory.push(currentMessage);
-
-    const result = await gemi.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: fullHistory,
+    // Start chat with history
+    const chat = model.startChat({
+      history: geminiHistory,
     });
 
-    const answer = result.text || "No response generated.";
+    const result = await chat.sendMessageStream(question);
 
-    fullHistory.push({
-      role: "model",
-      parts: [{ text: answer }],
+    const encoder = new TextEncoder();
+    let fullResponse = "";
+    const fullHistory = [...geminiHistory];
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              fullResponse += text;
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ delta: text })}\n\n`)
+              );
+            }
+          }
+
+          // Add the assistant's response to history
+          fullHistory.push({
+            role: "model",
+            parts: [{ text: fullResponse }]
+          });
+
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, history: fullHistory })}\n\n`));
+          controller.close();
+        } catch (error) {
+          console.error("Streaming error:", error);
+          controller.error(error);
+        }
+      },
     });
 
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (error) {
+    console.error("API Error:", error);
     return new Response(
       JSON.stringify({
-        answer,
-        history: fullHistory,
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error)
       }),
       {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
-    // LOG THE ACTUAL ERROR
-    console.error("API Error:", error);
-    
-    return new Response(
-      JSON.stringify({ 
-        error: "Invalid request body",
-        details: error instanceof Error ? error.message : String(error)
-      }), 
-      {
-        status: 400,
+        status: 500,
         headers: { "Content-Type": "application/json" },
       }
     );

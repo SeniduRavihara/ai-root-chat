@@ -1,7 +1,7 @@
 "use client";
 
-import { addMockData } from "@/firebase/api";
-import { useAuth } from "@/hooks/useAuth";
+import { addMockData } from "../../firebase/api";
+import { useAuth } from "../../hooks/useAuth";
 
 const TestPage = () => {
   const { currentUser } = useAuth();
