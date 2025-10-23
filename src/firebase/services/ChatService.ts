@@ -1,14 +1,15 @@
-import { db } from "../firebase_config";
-import { BranchWithMessages, Chat } from "../../types";
 import {
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
+import { BranchWithMessages, Chat } from "../../types";
+import { db } from "../firebase_config";
 
 function getRandomColor(): string {
   const colors = [
@@ -84,13 +85,44 @@ export const getChats = async (uid: string) => {
   return chats.docs.map((doc) => doc.data());
 };
 
-export async function updateChatName(uid: string, chatId: string, name: string) {
+export async function updateChatName(
+  uid: string,
+  chatId: string,
+  name: string
+) {
   const chatRef = doc(db, "users", uid, "chats", chatId);
   await updateDoc(chatRef, {
     name: name.trim(),
     updatedAt: new Date().toISOString(),
     autoRenamed: true,
   });
+}
+
+export async function manuallyRenameChat(
+  uid: string,
+  chatId: string,
+  name: string
+) {
+  const chatRef = doc(db, "users", uid, "chats", chatId);
+  await updateDoc(chatRef, {
+    name: name.trim(),
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function deleteChat(uid: string, chatId: string) {
+  // Delete all branches first
+  const branchesRef = collection(db, "users", uid, "chats", chatId, "branches");
+  const branchesSnapshot = await getDocs(branchesRef);
+
+  const deletePromises = branchesSnapshot.docs.map((branchDoc) =>
+    deleteDoc(branchDoc.ref)
+  );
+  await Promise.all(deletePromises);
+
+  // Then delete the chat document
+  const chatRef = doc(db, "users", uid, "chats", chatId);
+  await deleteDoc(chatRef);
 }
 
 export async function updateChatTimestamp(uid: string, chatId: string) {
@@ -100,19 +132,26 @@ export async function updateChatTimestamp(uid: string, chatId: string) {
   });
 }
 
-
 /**
  * Create a new branch for a user in Firestore
  * @param uid - user id
  * @param branchData - branch object (id, name, color, parentId, parentMessageId, messages)
  */
 export async function updateBranchName(
-uid: string,
-chatId: string,
-branchId: string,
+  uid: string,
+  chatId: string,
+  branchId: string,
   name: string
 ) {
-const branchRef = doc(db, "users", uid, "chats", chatId, "branches", branchId);
+  const branchRef = doc(
+    db,
+    "users",
+    uid,
+    "chats",
+    chatId,
+    "branches",
+    branchId
+  );
   await updateDoc(branchRef, {
     name: name.trim(),
   });
@@ -126,6 +165,14 @@ export async function createBranchForUser(
   chatId: string,
   branchData: BranchWithMessages
 ) {
-  const branchRef = doc(db, "users", uid, "chats", chatId, "branches", branchData.id);
+  const branchRef = doc(
+    db,
+    "users",
+    uid,
+    "chats",
+    chatId,
+    "branches",
+    branchData.id
+  );
   await setDoc(branchRef, branchData);
 }

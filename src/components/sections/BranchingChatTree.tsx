@@ -174,6 +174,14 @@ export default function BranchingChatTree() {
 
   // Check if there are any chats
   const hasChats = allChats && allChats.length > 0;
+  
+  // Debug logging for Brave browser issue
+  console.log("🔍 BranchingChatTree render:", { 
+    hasChats, 
+    allChatsLength: allChats?.length, 
+    activeChatId, 
+    branchesDataKeys: Object.keys(branchesData || {}).length 
+  });
 
   // Handle sending first message from welcome screen
   const handleWelcomeMessage = async (message: string) => {
@@ -304,6 +312,7 @@ export default function BranchingChatTree() {
 
   // Show welcome screen if no chats exist
   if (!hasChats) {
+    console.log("📺 Showing Welcome Screen");
     return (
       <div
         ref={containerRef}
@@ -316,6 +325,8 @@ export default function BranchingChatTree() {
       </div>
     );
   }
+  
+  console.log("📊 Rendering main chat interface");
 
   return (
     <div

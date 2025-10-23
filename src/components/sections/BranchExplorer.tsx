@@ -1,22 +1,29 @@
-import { addMockData } from "../../firebase/api";
-import { logout } from "../../firebase/services/AuthService";
-import { createNewChat } from "../../firebase/services/ChatService";
-import { useAuth } from "../../hooks/useAuth";
-import { useData } from "../../hooks/useData";
-import SettingsModal from "../ui/SettingsModal";
 import {
-ChevronDown,
-ChevronLeft,
-ChevronRight,
-LogOut,
-Plus,
-Search,
-Settings,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  LogOut,
+  MoreVertical,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
   User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { addMockData } from "../../firebase/api";
+import { logout } from "../../firebase/services/AuthService";
+import {
+  createNewChat,
+  deleteChat,
+  manuallyRenameChat,
+} from "../../firebase/services/ChatService";
+import { useAuth } from "../../hooks/useAuth";
+import { useData } from "../../hooks/useData";
 import { Branch } from "../../types";
+import SettingsModal from "../ui/SettingsModal";
 
 interface BranchExplorerProps {
   sidebarOpen: boolean;
@@ -62,11 +69,11 @@ export default function BranchExplorer({
   } = useData();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
   const [isCreating, setIsCreating] = useState(false);
+  const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const router = useRouter();
-
-
 
   const handleCreateNewChat = async () => {
     try {
@@ -101,6 +108,57 @@ export default function BranchExplorer({
       );
     } catch (error) {
       console.error("Seeding sample data failed:", error);
+    }
+  };
+
+  const handleStartRename = (chatId: string, currentName: string) => {
+    setRenamingChatId(chatId);
+    setRenameValue(currentName);
+    setOpenMenuChatId(null);
+  };
+
+  const handleSaveRename = async (chatId: string) => {
+    if (!currentUser || !renameValue.trim()) {
+      setRenamingChatId(null);
+      return;
+    }
+
+    try {
+      await manuallyRenameChat(currentUser.uid, chatId, renameValue);
+      setRenamingChatId(null);
+      setRenameValue("");
+    } catch (error) {
+      console.error("Failed to rename chat:", error);
+    }
+  };
+
+  const handleCancelRename = () => {
+    setRenamingChatId(null);
+    setRenameValue("");
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    if (!currentUser) return;
+
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this chat? This action cannot be undone."
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      // If deleting the active chat, switch to another chat first
+      if (activeChatId === chatId) {
+        const otherChat = allChats?.find((c) => c.id !== chatId);
+        if (otherChat) {
+          makeChatActive(otherChat.id);
+        }
+      }
+
+      await deleteChat(currentUser.uid, chatId);
+      setOpenMenuChatId(null);
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
     }
   };
 
@@ -177,77 +235,174 @@ export default function BranchExplorer({
           ) : allChats && allChats.length > 0 ? (
             [...allChats]
               .sort((a, b) => {
-                const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
-                const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                const aTime = new Date(
+                  a.updatedAt || a.createdAt || 0
+                ).getTime();
+                const bTime = new Date(
+                  b.updatedAt || b.createdAt || 0
+                ).getTime();
                 return bTime - aTime;
               })
               .map((chat) => {
-              const messages = Array.isArray(chat.messages)
-                ? chat.messages
-                : [];
-              const count = messages.length;
-              const lastMsg = count > 0 ? messages[count - 1] : undefined;
+                const messages = Array.isArray(chat.messages)
+                  ? chat.messages
+                  : [];
+                const count = messages.length;
+                const lastMsg = count > 0 ? messages[count - 1] : undefined;
 
-              const preview =
-                lastMsg && typeof lastMsg.content === "string"
-                  ? `${lastMsg.content.slice(0, 50)}${
-                      lastMsg.content.length > 50 ? "…" : ""
-                    }`
-                  : "";
+                const preview =
+                  lastMsg && typeof lastMsg.content === "string"
+                    ? `${lastMsg.content.slice(0, 50)}${
+                        lastMsg.content.length > 50 ? "…" : ""
+                      }`
+                    : "";
 
-              return (
-                <button
-                  key={chat.id}
-                  onClick={() => makeChatActive(chat.id)}
-                  className={`w-full text-left p-2 rounded-lg transition-all duration-200 group
+                return (
+                  <div
+                    key={chat.id}
+                    className={`relative w-full text-left p-2 rounded-lg transition-all duration-200 group
             ${
               activeChatId === chat.id
                 ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500"
                 : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
             }`}
-                >
-                  <div className="flex items-center">
+                  >
                     <div
-                      className="w-1 h-6 rounded-full mr-2 flex-shrink-0"
-                      style={{ backgroundColor: chat.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">
-                          {onRenamingStart && onRenamingEnd && renamingChats?.has(chat.id) ? (
-                            <span className="flex items-center">
-                              <span className="animate-pulse">Renaming...</span>
-                              <div className="ml-1 flex space-x-1">
-                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
-                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                                <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                              </div>
-                            </span>
+                      className="flex items-center cursor-pointer"
+                      onClick={() =>
+                        renamingChatId !== chat.id && makeChatActive(chat.id)
+                      }
+                    >
+                      <div
+                        className="w-1 h-6 rounded-full mr-2 flex-shrink-0"
+                        style={{ backgroundColor: chat.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          {renamingChatId === chat.id ? (
+                            <input
+                              type="text"
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleSaveRename(chat.id);
+                                } else if (e.key === "Escape") {
+                                  handleCancelRename();
+                                }
+                              }}
+                              onBlur={() => handleSaveRename(chat.id)}
+                              autoFocus
+                              className="flex-1 text-sm font-medium px-2 py-1 rounded bg-white dark:bg-gray-800 border border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           ) : (
-                            chat.name
+                            <h4 className="flex-1 text-sm font-medium truncate text-gray-900 dark:text-gray-100">
+                              {onRenamingStart &&
+                              onRenamingEnd &&
+                              renamingChats?.has(chat.id) ? (
+                                <span className="flex items-center">
+                                  <span className="animate-pulse">
+                                    Renaming...
+                                  </span>
+                                  <div className="ml-1 flex space-x-1">
+                                    <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
+                                    <div
+                                      className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
+                                      style={{ animationDelay: "0.1s" }}
+                                    ></div>
+                                    <div
+                                      className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
+                                      style={{ animationDelay: "0.2s" }}
+                                    ></div>
+                                  </div>
+                                </span>
+                              ) : (
+                                chat.name
+                              )}
+                            </h4>
                           )}
-                        </h4>
-                        {count > 0 && (
-                          <div
-                            className="ml-2 flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium flex-shrink-0"
-                            style={{
-                              backgroundColor: `${chat.color}20`,
-                              color: chat.color,
-                            }}
-                            title={`${count} messages`}
-                          >
-                            {count}
+
+                          <div className="flex items-center gap-1">
+                            {count > 0 && (
+                              <div
+                                className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium flex-shrink-0"
+                                style={{
+                                  backgroundColor: `${chat.color}20`,
+                                  color: chat.color,
+                                }}
+                                title={`${count} messages`}
+                              >
+                                {count}
+                              </div>
+                            )}
+
+                            {/* Three dots menu */}
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuChatId(
+                                    openMenuChatId === chat.id ? null : chat.id
+                                  );
+                                }}
+                                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="More options"
+                              >
+                                <MoreVertical
+                                  size={14}
+                                  className="text-gray-600 dark:text-gray-400"
+                                />
+                              </button>
+
+                              {/* Dropdown menu */}
+                              {openMenuChatId === chat.id && (
+                                <>
+                                  {/* Backdrop to close menu */}
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuChatId(null);
+                                    }}
+                                  />
+
+                                  {/* Menu */}
+                                  <div className="absolute right-0 top-6 z-20 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartRename(chat.id, chat.name);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-300"
+                                    >
+                                      <Edit2 size={14} />
+                                      Rename
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteChat(chat.id);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 text-red-600 dark:text-red-400"
+                                    >
+                                      <Trash2 size={14} />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {preview || "No messages yet"}
+                        </div>
+                        <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {preview || "No messages yet"}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </button>
-              );
-            })
+                );
+              })
           ) : (
             <div className="px-2 py-4 text-xs text-gray-500 dark:text-gray-400 text-center">
               No chats yet. Create one to get started.
@@ -314,27 +469,27 @@ export default function BranchExplorer({
                 </div>
               </div>
               <div className="p-2 space-y-1">
-              <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
-              >
-              <Settings size={16} className="mr-2" />
-                Settings
-              </button>
-              <button
-              onClick={handleSeedSampleData}
-                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
-              >
-              Seed sample data
-              </button>
                 <button
-                   onClick={handleLogout}
-                   className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
-                 >
-                   <LogOut size={16} className="mr-2" />
-                   Sign out
-                 </button>
-               </div>
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
+                >
+                  <Settings size={16} className="mr-2" />
+                  Settings
+                </button>
+                <button
+                  onClick={handleSeedSampleData}
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors duration-200"
+                >
+                  Seed sample data
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
+                >
+                  <LogOut size={16} className="mr-2" />
+                  Sign out
+                </button>
+              </div>
             </div>
           )}
         </div>
