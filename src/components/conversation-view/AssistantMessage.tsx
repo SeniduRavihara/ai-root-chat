@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { formatMessageTime } from "../../services/messageService";
 import { BranchWithMessages, Message } from "../../types";
+import CodeBlock from "../ui/CodeBlock";
 import StreamingMessage from "../ui/StreamingMessage";
 
 interface AssistantMessageProps {
@@ -61,13 +62,22 @@ export default function AssistantMessage({
                       code({ className, children, ...props }) {
                         const isCodeBlock =
                           className && className.startsWith("language-");
-                        return isCodeBlock ? (
-                          <pre className="overflow-x-auto rounded-lg bg-gray-800 p-4 text-gray-100 my-4">
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          </pre>
-                        ) : (
+
+                        if (isCodeBlock) {
+                          const language =
+                            className?.replace("language-", "") || "text";
+                          const codeString = String(children).replace(
+                            /\n$/,
+                            ""
+                          );
+                          return (
+                            <CodeBlock language={language}>
+                              {codeString}
+                            </CodeBlock>
+                          );
+                        }
+
+                        return (
                           <code
                             className={`${className} rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-700 text-gray-800 dark:text-gray-200`}
                             {...props}
