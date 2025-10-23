@@ -115,7 +115,7 @@ export default function CodeBlock({
   };
 
   return (
-    <div className="relative my-4 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+    <div className="relative rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm border-b border-gray-200 dark:border-gray-700">
         <span className="font-mono">{language}</span>
         <button
@@ -159,7 +159,7 @@ export default function CodeBlock({
           )}
         </button>
       </div>
-      <pre className="!my-0 !bg-gray-50 dark:!bg-gray-900 overflow-x-auto p-4">
+      <pre className="!m-0 !bg-gray-50 dark:!bg-gray-900 overflow-x-auto p-4">
         <code ref={codeRef} className={`language-${language}`}>
           {children}
         </code>

@@ -59,6 +59,10 @@ export default function AssistantMessage({
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
                     components={{
+                      pre({ children }) {
+                        // Pass through pre tag without any styling - CodeBlock handles its own styling
+                        return <>{children}</>;
+                      },
                       code({ className, children, ...props }) {
                         const isCodeBlock =
                           className && className.startsWith("language-");
