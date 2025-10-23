@@ -115,12 +115,12 @@ export default function CodeBlock({
   };
 
   return (
-    <div className="relative my-4 rounded-lg overflow-hidden bg-[#2d2d2d]">
-      <div className="flex items-center justify-between px-4 py-2 bg-[#1e1e1e] text-gray-300 text-sm border-b border-gray-700">
+    <div className="relative my-4 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm border-b border-gray-200 dark:border-gray-700">
         <span className="font-mono">{language}</span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-2 px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+          className="flex items-center gap-2 px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
         >
           {copied ? (
             <>
@@ -159,7 +159,7 @@ export default function CodeBlock({
           )}
         </button>
       </div>
-      <pre className="!my-0 !bg-[#2d2d2d] overflow-x-auto">
+      <pre className="!my-0 !bg-gray-50 dark:!bg-gray-900 overflow-x-auto p-4">
         <code ref={codeRef} className={`language-${language}`}>
           {children}
         </code>
