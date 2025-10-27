@@ -12,6 +12,7 @@ import {
 import { useData } from "../../hooks/useData";
 import { BranchWithMessages } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
+import FollowUpInput from "../conversation-view/FollowUpInput";
 import Header from "../conversation-view/Header";
 import MessageItem from "../conversation-view/MessageItem";
 import TextSelectionTooltip from "../ui/TextSelectionTooltip";
@@ -65,6 +66,11 @@ export default function ConversationView({
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
+  const [followUpModal, setFollowUpModal] = useState<{
+    isOpen: boolean;
+    selectedText: string;
+    messageId: string;
+  } | null>(null);
 
   const isNearBottom = () => {
     const el = messagesContainerRef.current;
@@ -490,9 +496,12 @@ export default function ConversationView({
     });
   };
 
-  // Handle "Ask AI" from text selection
-  const handleAskAI = async (selectedText: string, messageId: string) => {
-    if (!currentUserData || !activeChatId) return;
+  // Handle follow-up question submission
+  const handleFollowUpSubmit = async (messageData: { text: string; context: string | null }) => {
+    if (!currentUserData || !activeChatId || !followUpModal) return;
+
+    const { selectedText, messageId } = followUpModal;
+    const question = messageData.text;
 
     // Find the branch that contains this message
     const parentBranchId = getMessageBranchId(messageId, branchesData);
@@ -521,8 +530,14 @@ export default function ConversationView({
       };
     });
 
-    // Switch to the new branch immediately
+    // Switch to the new branch
     onBranchSwitch?.(newBranchId);
+
+    // Close the modal
+    setFollowUpModal(null);
+
+    // Set the user's question in the input
+    setMessage(question);
 
     // Auto-rename the branch using AI based on selected text
     const userApiKey = getUserApiKey();
@@ -538,10 +553,16 @@ export default function ConversationView({
         }
       })
       .catch((error) => console.error("Failed to auto-name branch:", error));
+  };
 
-    // Pre-fill the input with a contextual question
-    const contextualQuestion = createFollowUpQuestion(selectedText);
-    setMessage(contextualQuestion);
+  // Handle "Ask AI" from text selection
+  const handleAskAI = async (selectedText: string, messageId: string) => {
+  // Just open the follow-up modal, don't create branch yet
+    setFollowUpModal({
+    isOpen: true,
+    selectedText,
+    messageId,
+    });
   };
 
   return (
@@ -580,14 +601,25 @@ export default function ConversationView({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message input */}
-      <ChatInput
-        message={message}
-        setMessage={setMessage}
-        handleSubmit={handleSubmit}
-        branchesData={branchesData}
-        activeBranch={activeBranch}
-      />
+      {/* Follow-up Input */}
+      {followUpModal?.isOpen && (
+        <FollowUpInput
+          followUpContext={followUpModal.selectedText}
+          onClearContext={() => setFollowUpModal(null)}
+          onSubmit={handleFollowUpSubmit}
+        />
+      )}
+
+      {/* Message input - only show when not in follow-up mode */}
+      {!followUpModal?.isOpen && (
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          handleSubmit={handleSubmit}
+          branchesData={branchesData}
+          activeBranch={activeBranch}
+        />
+      )}
 
       <TextSelectionTooltip onAskAI={handleAskAI} />
     </div>
