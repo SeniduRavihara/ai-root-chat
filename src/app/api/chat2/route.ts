@@ -89,14 +89,14 @@ ${question}`
   } else {
     // Add system prompt for regular chat
     const systemMessage = {
-      role: "user",
-      parts: [{
-        text: "DON'T WASTE TOKENS - Keep responses concise but helpful. You are an assistant. give the result with markdown styles to impress and equations in math answers"
-      }],
+    role: "user",
+    parts: [{
+    text: "You are a helpful AI assistant. Provide clear, informative responses and use markdown formatting for better readability. Use LaTeX equations for mathematical expressions when appropriate."
+    }],
     };
 
     // Check if system message already exists
-    const hasSystemMessage = history.length > 0 && history[0]?.parts?.[0]?.text?.includes("DON'T WASTE TOKENS");
+    const hasSystemMessage = history.length > 0 && history[0]?.parts?.[0]?.text?.includes("You are a helpful AI assistant");
 
     fullHistory = hasSystemMessage
       ? [...history, currentMessage]

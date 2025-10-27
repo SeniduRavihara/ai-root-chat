@@ -80,6 +80,27 @@ export default function StreamingMessage({ content, isStreaming = false, onCompl
               </blockquote>
             );
           },
+          ul({ children }) {
+            return (
+              <ul className="list-disc list-outside space-y-1 my-4 ml-4">
+                {children}
+              </ul>
+            );
+          },
+          ol({ children }) {
+            return (
+              <ol className="list-decimal list-outside space-y-1 my-4 ml-4">
+                {children}
+              </ol>
+            );
+          },
+          li({ children }) {
+            return (
+              <li className="ml-2">
+                {children}
+              </li>
+            );
+          },
         }}
       >
         {displayedContent}

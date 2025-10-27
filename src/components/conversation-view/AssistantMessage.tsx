@@ -13,7 +13,6 @@ interface AssistantMessageProps {
   messageBranch?: BranchWithMessages;
   isFromCurrentBranch: boolean;
   isLastMessage: boolean;
-  isTyping: boolean;
   streamingContent: string;
   onCreateBranch: () => void;
 }
@@ -23,7 +22,6 @@ export default function AssistantMessage({
   messageBranch,
   isFromCurrentBranch,
   isLastMessage,
-  isTyping,
   streamingContent,
   onCreateBranch,
 }: AssistantMessageProps) {
@@ -48,10 +46,9 @@ export default function AssistantMessage({
             </div>
             <div className="flex-1 min-w-0">
               {/* AI Message Content */}
-              {isLastMessage && (isTyping || streamingContent) ? (
+              {isLastMessage && streamingContent ? (
                 <StreamingMessage
                   content={streamingContent || message.content}
-                  isStreaming={isTyping}
                 />
               ) : (
                 <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900">
@@ -118,6 +115,27 @@ export default function AssistantMessage({
                           <blockquote className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 italic my-4 dark:bg-blue-900/20">
                             {children}
                           </blockquote>
+                        );
+                      },
+                      ul({ children }) {
+                        return (
+                          <ul className="list-disc list-outside space-y-1 my-4 ml-4">
+                            {children}
+                          </ul>
+                        );
+                      },
+                      ol({ children }) {
+                        return (
+                          <ol className="list-decimal list-outside space-y-1 my-4 ml-4">
+                            {children}
+                          </ol>
+                        );
+                      },
+                      li({ children }) {
+                        return (
+                          <li className="ml-2">
+                            {children}
+                          </li>
                         );
                       },
                     }}
