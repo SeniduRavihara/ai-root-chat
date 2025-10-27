@@ -14,7 +14,6 @@ import { BranchWithMessages } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
 import Header from "../conversation-view/Header";
 import MessageItem from "../conversation-view/MessageItem";
-import TypingIndicator from "../conversation-view/TypingIndicator";
 import TextSelectionTooltip from "../ui/TextSelectionTooltip";
 
 // Import new service modules
@@ -60,7 +59,7 @@ export default function ConversationView({
   } = useData();
 
   const [message, setMessage] = useState<string>("");
-  const [isTyping, setIsTyping] = useState<boolean>(false);
+
   const [streamingContent, setStreamingContent] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
@@ -334,7 +333,6 @@ export default function ConversationView({
     );
 
     setMessage("");
-    setIsTyping(true);
     setShouldScrollToBottom(true);
 
     // Get user's API key
@@ -382,9 +380,8 @@ export default function ConversationView({
     });
 
     if (!response.ok) {
-      console.error("API error:", response.status);
-      setIsTyping(false);
-      return;
+    console.error("API error:", response.status);
+    return;
     }
 
     const reader = response.body?.getReader();
@@ -460,7 +457,6 @@ export default function ConversationView({
       }
     }
 
-    setIsTyping(false);
     setStreamingContent("");
     setShouldScrollToBottom(true);
   };
@@ -572,15 +568,13 @@ export default function ConversationView({
               branchesData={branchesData}
               isFromCurrentBranch={isFromCurrentBranch}
               messageBranch={messageBranch ?? undefined}
-              isTyping={isTyping}
               streamingContent={streamingContent}
               onCreateBranch={handleCreateBranch}
             />
           );
         })}
 
-        {/* Typing indicator */}
-        {isTyping && <TypingIndicator />}
+
 
         {/* Invisible element for auto-scrolling */}
         <div ref={messagesEndRef} />

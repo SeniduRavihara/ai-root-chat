@@ -13,7 +13,6 @@ interface MessageItemProps {
   branchesData: Record<string, BranchWithMessages>;
   isFromCurrentBranch: boolean;
   messageBranch?: BranchWithMessages;
-  isTyping: boolean;
   streamingContent: string;
   onCreateBranch: (branchId: string, messageId: string) => void;
 }
@@ -25,7 +24,6 @@ export default function MessageItem({
   branchesData,
   isFromCurrentBranch,
   messageBranch,
-  isTyping,
   streamingContent,
   onCreateBranch,
 }: MessageItemProps) {
@@ -81,7 +79,6 @@ export default function MessageItem({
           messageBranch={messageBranch}
           isFromCurrentBranch={isFromCurrentBranch}
           isLastMessage={isLastMessage}
-          isTyping={isTyping}
           streamingContent={streamingContent}
           onCreateBranch={() =>
             onCreateBranch(

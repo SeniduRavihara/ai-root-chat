@@ -10,26 +10,41 @@ type ChatInputProps = {
 };
 
 const ChatInput: React.FC<ChatInputProps> = ({
-  message,
-  setMessage,
-  handleSubmit,
-  branchesData,
-  activeBranch,
+message,
+setMessage,
+handleSubmit,
+branchesData,
+activeBranch,
 }) => {
-  const branch = branchesData[activeBranch];
+const branch = branchesData[activeBranch];
 
-  return (
-    <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1.5"
-      >
-        <input
-          type="text"
+return (
+<div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+<form
+  onSubmit={handleSubmit}
+  className="flex items-end bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1.5"
+>
+        <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-grow bg-transparent outline-none px-2 py-1.5 text-sm"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (message.trim()) {
+                // Submit the form
+                (e.currentTarget.closest('form') as HTMLFormElement)?.requestSubmit();
+              }
+            }
+          }}
+        placeholder="Type your message..."
+          rows={1}
+          className="flex-grow bg-transparent outline-none px-2 py-1.5 text-sm resize-none min-h-[1.5rem] max-h-32 overflow-y-auto"
+          style={{ height: 'auto' }}
+          onInput={(e) => {
+            const target = e.target as HTMLTextAreaElement;
+            target.style.height = 'auto';
+            target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+          }}
         />
         <div className="flex items-center">
           <button
