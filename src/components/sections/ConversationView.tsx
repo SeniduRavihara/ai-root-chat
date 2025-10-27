@@ -12,7 +12,6 @@ import {
 import { useData } from "../../hooks/useData";
 import { BranchWithMessages } from "../../types";
 import ChatInput from "../conversation-view/ChatInput";
-import FollowUpInput from "../conversation-view/FollowUpInput";
 import Header from "../conversation-view/Header";
 import MessageItem from "../conversation-view/MessageItem";
 import TextSelectionTooltip from "../ui/TextSelectionTooltip";
@@ -30,7 +29,6 @@ import {
 } from "../../services/branchTreeService";
 import {
   createAssistantMessage,
-  createFollowUpQuestion,
   createUserMessage,
 } from "../../services/messageService";
 import {
@@ -601,25 +599,34 @@ export default function ConversationView({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Follow-up Input */}
+      {/* Follow-up Context Banner */}
       {followUpModal?.isOpen && (
-        <FollowUpInput
-          followUpContext={followUpModal.selectedText}
-          onClearContext={() => setFollowUpModal(null)}
-          onSubmit={handleFollowUpSubmit}
-        />
+        <div className="mx-4 mb-2 p-3 bg-gray-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center flex-grow">
+            <span className="text-gray-400 mr-2">💬</span>
+            <span className="text-white text-sm truncate">
+              &ldquo;{followUpModal.selectedText.length > 50 ? followUpModal.selectedText.substring(0, 50) + '...' : followUpModal.selectedText}&rdquo;
+            </span>
+          </div>
+          <button
+            onClick={() => setFollowUpModal(null)}
+            className="text-gray-400 hover:text-gray-300 ml-2 p-1"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
-      {/* Message input - only show when not in follow-up mode */}
-      {!followUpModal?.isOpen && (
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          handleSubmit={handleSubmit}
-          branchesData={branchesData}
-          activeBranch={activeBranch}
-        />
-      )}
+      {/* Message input */}
+      <ChatInput
+        message={message}
+        setMessage={setMessage}
+        handleSubmit={handleSubmit}
+        branchesData={branchesData}
+        activeBranch={activeBranch}
+        followUpContext={followUpModal?.isOpen ? followUpModal.selectedText : null}
+        onFollowUpSubmit={handleFollowUpSubmit}
+      />
 
       <TextSelectionTooltip onAskAI={handleAskAI} />
     </div>

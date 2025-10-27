@@ -4,26 +4,48 @@ import { GitBranch, Plus, Send } from 'lucide-react';
 type ChatInputProps = {
   message: string;
   setMessage: (msg: string) => void;
-handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-branchesData: Record<string, any>;
-activeBranch: string;
+  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  branchesData: Record<string, any>;
+  activeBranch: string;
+  followUpContext?: string | null;
+  onFollowUpSubmit?: (messageData: { text: string; context: string | null }) => void;
 };
 
 const ChatInput: React.FC<ChatInputProps> = ({
-message,
-setMessage,
-handleSubmit,
+  message,
+  setMessage,
+  handleSubmit,
   branchesData,
-activeBranch,
+  activeBranch,
+  followUpContext,
+  onFollowUpSubmit,
 }) => {
-const branch = branchesData[activeBranch];
+  const branch = branchesData[activeBranch];
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    if (followUpContext && onFollowUpSubmit) {
+      // Handle follow-up submission
+      onFollowUpSubmit({
+        text: message,
+        context: followUpContext,
+      });
+      setMessage('');
+      return;
+    }
+
+    // Regular message submission
+    handleSubmit(e);
+  };
 
 return (
     <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
   <form
-    onSubmit={handleSubmit}
+  onSubmit={handleFormSubmit}
   className="flex items-center bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1.5"
->
+  >
     <input
           type="text"
       value={message}
